@@ -6,7 +6,7 @@ import type { StaffSchema } from '@/features/staff/validation'
 
 const staffsCollection = collection(db, 'staffs')
 
-function withTimeout<T>(promise: Promise<T>, ms = 5000): Promise<T> {
+function withTimeout<T>(promise: Promise<T>, ms = 12000): Promise<T> {
   const timeout = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error('Não foi possível conectar ao banco de dados.')), ms)
   )
@@ -23,7 +23,7 @@ export async function listStaffs(): Promise<Staff[]> {
 
   try {
     const snapshot = await withTimeout(getDocs(staffsCollection))
-    const fromFirebase = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Staff))
+    const fromFirebase = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Staff))
 
     const firebaseEmails = new Set(fromFirebase.map(s => s.email))
     const stillPending = pending.filter(s => !firebaseEmails.has(s.email))
@@ -59,9 +59,8 @@ export async function createStaff(data: StaffSchema): Promise<{ synced: boolean 
       throw new Error('Já existe um colaborador cadastrado com esse e-mail no servidor.')
     }
 
-    const { _localId, _pendingSync, ...payload } = localEntry
-    // Tentativa de gravação direta
-    await withTimeout(setDoc(staffDoc, payload))
+    const { _localId, _pendingSync, id: _localIdAlt, ...payload } = localEntry
+    await withTimeout(setDoc(staffDoc, { ...payload, createdAt: Date.now() }))
 
     removePendingByEmail(data.email)
     return { synced: true }

@@ -11,7 +11,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test tests/e2e/staff.spec.ts",
+    "test:smoke": "playwright test tests/e2e/smoke.spec.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
