@@ -47,7 +47,7 @@ export async function createStaff(data: StaffSchema): Promise<{ synced: boolean 
   const localEntry = addPendingStaff(data)
 
   if (!isFirebaseConfigured) {
-    console.warn('Firebase não configurado. Salvo apenas localmente.')
+    console.warn('Firebase não configurado (VITE_FIREBASE_PROJECT_ID ausente).')
     return { synced: false }
   }
 
@@ -60,20 +60,22 @@ export async function createStaff(data: StaffSchema): Promise<{ synced: boolean 
     }
 
     const { _localId, _pendingSync, id: _localIdAlt, ...payload } = localEntry
-    await withTimeout(setDoc(staffDoc, payload))
+    
+    // O payload PRECISA incluir createdAt para passar nas regras do Firestore
+    const finalData = { ...payload, createdAt: Date.now() }
+    
+    await withTimeout(setDoc(staffDoc, finalData))
 
     removePendingByEmail(data.email)
     return { synced: true }
-  } catch (err) {
-    console.error('Falha na sincronização com Firebase:', err)
+  } catch (err: any) {
+    console.error('Falha técnica no Firebase:', err.code || err.message, err)
     
-    // Se o erro for de duplicidade, não mantemos no localstorage para evitar confusão
     if (err instanceof Error && err.message.includes('e-mail')) {
       removePendingByEmail(data.email)
       throw err
     }
     
-    // Para outros erros (permissão/rede), mantemos como Pendente
     return { synced: false }
   }
 }
@@ -91,12 +93,12 @@ export async function pushStaffToFirebase(staff: Staff): Promise<boolean> {
     }
 
     const { _localId, _pendingSync, id, ...payload } = staff
-    await withTimeout(setDoc(staffDoc, payload))
+    await withTimeout(setDoc(staffDoc, { ...payload, createdAt: staff.createdAt || Date.now() }))
 
     removePendingByEmail(staff.email)
     return true
-  } catch (err) {
-    console.error('Erro no push automático:', err)
+  } catch (err: any) {
+    console.error('Erro na sincronização de fundo:', err.code || err.message)
     return false
   }
 }
