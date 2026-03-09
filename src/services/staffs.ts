@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore'
+import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '@/libs/firebase'
 import { addPendingStaff, getPendingStaffs, removePendingByEmail } from '@/services/local-storage'
 import type { Staff } from '@/features/staff/types'
@@ -38,7 +38,7 @@ export async function listStaffs(): Promise<Staff[]> {
   }
 }
 
-export async function createStaff(data: StaffSchema): Promise<{ synced: boolean }> {
+export async function createStaff(data: StaffSchema): Promise<{ synced: boolean; error?: string }> {
   const existingLocal = getPendingStaffs().find(s => s.email === data.email)
   if (existingLocal) {
     throw new Error('E-mail já cadastrado localmente.')
@@ -47,7 +47,7 @@ export async function createStaff(data: StaffSchema): Promise<{ synced: boolean 
   const localEntry = addPendingStaff(data)
 
   if (!isFirebaseConfigured) {
-    return { synced: false }
+    return { synced: false, error: 'Firebase não configurado no ambiente de build.' }
   }
 
   try {
@@ -59,8 +59,6 @@ export async function createStaff(data: StaffSchema): Promise<{ synced: boolean 
     }
 
     const { _localId, _pendingSync, id: _localIdAlt, ...payload } = localEntry
-    
-    // createdAt is required by Firestore rules
     const finalData = { ...payload, createdAt: Date.now() }
     
     await withTimeout(setDoc(staffDoc, finalData))
@@ -68,14 +66,15 @@ export async function createStaff(data: StaffSchema): Promise<{ synced: boolean 
     removePendingByEmail(data.email)
     return { synced: true }
   } catch (err: any) {
-    console.error('[Firebase Error]:', err.code || err.message)
+    const errorMsg = err.code || err.message
+    console.error('[Firebase Error]:', errorMsg)
     
     if (err instanceof Error && err.message.includes('E-mail já cadastrado')) {
       removePendingByEmail(data.email)
       throw err
     }
     
-    return { synced: false }
+    return { synced: false, error: errorMsg }
   }
 }
 
@@ -100,4 +99,14 @@ export async function pushStaffToFirebase(staff: Staff): Promise<boolean> {
     console.error('Erro na sincronização de fundo:', err.code || err.message)
     return false
   }
+}
+
+export async function updateStaff(id: string, data: StaffSchema): Promise<void> {
+  const staffDoc = doc(db, 'staffs', id)
+  await withTimeout(updateDoc(staffDoc, { ...data, updatedAt: Date.now() }))
+}
+
+export async function deleteStaff(id: string): Promise<void> {
+  const staffDoc = doc(db, 'staffs', id)
+  await withTimeout(deleteDoc(staffDoc))
 }

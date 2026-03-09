@@ -20,7 +20,7 @@ import {
 import CheckIcon from '@mui/icons-material/Check'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { staffSchema, departments, type StaffSchema } from '@/features/staff/validation'
-import { useCreateStaff } from '@/features/staff/hooks'
+import { useCreateStaff, useUpdateStaff } from '@/features/staff/hooks'
 
 const steps = ['Infos Básicas', 'Infos Profissionais']
 
@@ -29,17 +29,25 @@ const stepFields: Array<Array<keyof StaffSchema>> = [
   ['department'],
 ]
 
-export function StaffForm() {
+type StaffFormProps = {
+  staffId?: string
+  initialValues?: Partial<StaffSchema>
+  isEdit?: boolean
+}
+
+export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormProps) {
   const navigate = useNavigate()
   const [activeStep, setActiveStep] = useState(0)
   const [progress, setProgress] = useState(0)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
 
+  const draftKey = isEdit ? null : 'staff_form_draft'
+
   const { control, handleSubmit, trigger, watch } = useForm<StaffSchema>({
     mode: 'onChange',
     resolver: zodResolver(staffSchema),
-    defaultValues: JSON.parse(localStorage.getItem('staff_form_draft') || '{}') || {
+    defaultValues: initialValues ?? (draftKey ? JSON.parse(localStorage.getItem(draftKey) || '{}') : undefined) ?? {
       name: '',
       email: '',
       status: 'ACTIVE',
@@ -47,27 +55,35 @@ export function StaffForm() {
     },
   })
 
-  // Persistence for form draft
   const formValues = watch()
   useEffect(() => {
-    localStorage.setItem('staff_form_draft', JSON.stringify(formValues))
-  }, [formValues])
+    if (draftKey) localStorage.setItem(draftKey, JSON.stringify(formValues))
+  }, [formValues, draftKey])
 
-  const { mutateAsync: createStaff, isPending } = useCreateStaff()
+  const { mutateAsync: createStaff, isPending: isCreating } = useCreateStaff()
+  const { mutateAsync: updateStaff, isPending: isUpdating } = useUpdateStaff()
+  const isPending = isCreating || isUpdating
 
   const onSubmit = async (data: StaffSchema) => {
     try {
       setSubmitError(null)
-      const { synced } = await createStaff(data)
-      localStorage.removeItem('staff_form_draft') 
-      setSubmitSuccess(synced
-        ? 'Colaborador cadastrado com sucesso! Redirecionando...'
-        : 'Salvo localmente (offline). Sincronização pendente.'
-      )
-      setTimeout(() => navigate('/staffs'), synced ? 1500 : 2500)
+      if (isEdit && staffId) {
+        await updateStaff({ id: staffId, data })
+        setSubmitSuccess('Colaborador atualizado com sucesso! Redirecionando...')
+      } else {
+        const { synced, error } = await createStaff(data)
+        if (draftKey) localStorage.removeItem(draftKey)
+        
+        if (synced) {
+          setSubmitSuccess('Colaborador cadastrado com sucesso! Redirecionando...')
+        } else {
+          setSubmitSuccess(`Salvo localmente (offline). Motivo: ${error || 'Erro de conexão'}`)
+        }
+      }
+      setTimeout(() => navigate('/staffs'), 2000)
     } catch (err) {
       setProgress(50)
-      setSubmitError(err instanceof Error ? err.message : 'Erro ao cadastrar colaborador. Tente novamente.')
+      setSubmitError(err instanceof Error ? err.message : 'Erro ao salvar. Tente novamente.')
     }
   }
 
@@ -172,6 +188,7 @@ export function StaffForm() {
                     type="email"
                     fullWidth
                     placeholder="ex: joao@empresa.com"
+                    disabled={isEdit}
                     error={!!fieldState.error}
                     helperText={fieldState.error?.message}
                   />
@@ -182,7 +199,7 @@ export function StaffForm() {
                 control={control}
                 render={({ field }) => (
                   <FormControlLabel
-                    label="Ativar ao criar"
+                    label={isEdit ? 'Ativo' : 'Ativar ao criar'}
                     control={
                       <Switch
                         {...field}
@@ -221,12 +238,7 @@ export function StaffForm() {
         </Box>
       </Box>
 
-      {submitSuccess && (
-        <Alert severity="success">
-          {submitSuccess}
-        </Alert>
-      )}
-
+      {submitSuccess && <Alert severity="success">{submitSuccess}</Alert>}
       {submitError && (
         <Alert severity="error" onClose={() => setSubmitError(null)}>
           {submitError}
@@ -248,7 +260,7 @@ export function StaffForm() {
           onClick={handleNext}
           disabled={isPending || !!submitSuccess}
         >
-          {isLastStep ? (isPending ? 'Salvando...' : 'Concluir') : 'Próximo'}
+          {isLastStep ? (isPending ? 'Salvando...' : isEdit ? 'Salvar' : 'Concluir') : 'Próximo'}
         </Button>
       </Stack>
     </Box>
