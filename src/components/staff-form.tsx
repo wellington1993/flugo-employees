@@ -71,17 +71,22 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
       setSubmitError(null)
       if (isEdit && staffId) {
         await updateStaff({ id: staffId, data })
-        setSubmitSuccess('Colaborador atualizado com sucesso! Redirecionando...')
+        setSubmitSuccess('Colaborador atualizado com sucesso!')
       } else {
-        await createStaff(data)
+        const result = await createStaff(data)
         submittedRef.current = true
         if (draftKey) localStorage.removeItem(draftKey)
-        setSubmitSuccess('Colaborador cadastrado com sucesso! Redirecionando...')
+        
+        if (result.synced) {
+          setSubmitSuccess('Colaborador cadastrado com sucesso!')
+        } else {
+          setSubmitSuccess(`Salvo localmente (sincronização pendente: ${result.error || 'offline'})`)
+        }
       }
       setTimeout(() => navigate('/staffs'), 2000)
     } catch (err) {
       setProgress(50)
-      setSubmitError(err instanceof Error ? err.message : 'Erro ao salvar. Tente novamente.')
+      setSubmitError(err instanceof Error ? err.message : 'Erro inesperado ao salvar.')
     }
   }
 

@@ -8,7 +8,7 @@ const staffsCollection = collection(db, 'staffs')
 
 function withTimeout<T>(promise: Promise<T>, ms = 30000): Promise<T> {
   const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('Timeout: Banco de dados não respondeu.')), ms)
+    setTimeout(() => reject(new Error('Timeout: O banco de dados não respondeu.')), ms)
   )
   return Promise.race([promise, timeout])
 }
@@ -50,20 +50,26 @@ export async function listStaffs(): Promise<Staff[]> {
   }
 }
 
-export async function createStaff(data: StaffSchema): Promise<void> {
+export async function createStaff(data: StaffSchema): Promise<{ synced: boolean; error?: string }> {
   if (!isFirebaseConfigured) {
     addPendingStaff(data)
-    return
+    return { synced: false, error: 'Firebase não configurado' }
   }
 
   try {
     const staffDoc = doc(db, 'staffs', data.email)
     await withTimeout(setDoc(staffDoc, { ...data, createdAt: Date.now() }))
+    
     removePendingByEmail(data.email)
+    return { synced: true }
   } catch (err: any) {
     console.error('[Firebase] createStaff:', err)
+    
+    // Backup local
     addPendingStaff(data)
+    
     logRemoteError('createStaff', err).catch(() => {})
+    return { synced: false, error: err.code || err.message }
   }
 }
 
