@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs } from 'firebase/firestore'
+import { collection, addDoc, getDocs, query, where } from 'firebase/firestore'
 import { db } from '@/libs/firebase'
 import type { Staff } from '@/features/staff/types'
 import type { StaffSchema } from '@/features/staff/validation'
@@ -11,5 +11,9 @@ export async function listStaffs(): Promise<Staff[]> {
 }
 
 export async function createStaff(data: StaffSchema): Promise<void> {
+  const duplicate = await getDocs(query(staffsCollection, where('email', '==', data.email)))
+  if (!duplicate.empty) {
+    throw new Error('Já existe um colaborador cadastrado com esse e-mail.')
+  }
   await addDoc(staffsCollection, data)
 }

@@ -31,7 +31,7 @@ const columns: { id: keyof Staff; label: string; align?: TableCellProps['align']
 ]
 
 export function StaffList() {
-  const { data: staffs, isLoading } = useStaffs()
+  const { data: staffs, isLoading, isError } = useStaffs()
   const { order, orderBy, createSortHandler } = useSortTable('name')
 
   return (
@@ -75,6 +75,20 @@ export function StaffList() {
                 </TableCell>
               </TableRow>
             )}
+            {isError && (
+              <TableRow>
+                <TableCell colSpan={4} align="center" sx={{ py: 4, color: 'error.main' }}>
+                  Não foi possível carregar os colaboradores. Verifique sua conexão e tente novamente.
+                </TableCell>
+              </TableRow>
+            )}
+            {!isLoading && !isError && !staffs?.length && (
+              <TableRow>
+                <TableCell colSpan={4} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                  Nenhum colaborador cadastrado ainda.
+                </TableCell>
+              </TableRow>
+            )}
             {staffs
               ?.slice()
               .sort(getComparator(order, orderBy))
@@ -105,13 +119,6 @@ export function StaffList() {
                   </TableCell>
                 </TableRow>
               ))}
-            {!isLoading && staffs?.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={4} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                  Nenhum colaborador cadastrado ainda.
-                </TableCell>
-              </TableRow>
-            )}
           </TableBody>
         </Table>
       </TableContainer>

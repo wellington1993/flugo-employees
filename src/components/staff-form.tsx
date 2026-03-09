@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
+  Alert,
   Box,
   Button,
   FormControlLabel,
@@ -31,6 +32,7 @@ export function StaffForm() {
   const navigate = useNavigate()
   const [activeStep, setActiveStep] = useState(0)
   const [progress, setProgress] = useState(0)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const { control, handleSubmit, trigger } = useForm<StaffSchema>({
     mode: 'onChange',
@@ -46,7 +48,13 @@ export function StaffForm() {
   const { mutateAsync: createStaff, isPending } = useCreateStaff()
 
   const onSubmit = async (data: StaffSchema) => {
-    await createStaff(data)
+    try {
+      setSubmitError(null)
+      await createStaff(data)
+    } catch (err) {
+      setProgress(50)
+      setSubmitError(err instanceof Error ? err.message : 'Erro ao cadastrar colaborador. Tente novamente.')
+    }
   }
 
   const isLastStep = activeStep === steps.length - 1
@@ -199,6 +207,12 @@ export function StaffForm() {
         </Box>
       </Box>
 
+      {submitError && (
+        <Alert severity="error" onClose={() => setSubmitError(null)}>
+          {submitError}
+        </Alert>
+      )}
+
       <Stack direction="row" justifyContent="space-between" mt="auto" pt={2}>
         <Button onClick={handleBack} sx={{ color: 'text.secondary' }}>
           Voltar
@@ -208,7 +222,7 @@ export function StaffForm() {
           onClick={handleNext}
           disabled={isPending}
         >
-          {isLastStep ? 'Concluir' : 'Próximo'}
+          {isLastStep ? (isPending ? 'Salvando...' : 'Concluir') : 'Próximo'}
         </Button>
       </Stack>
     </Box>
