@@ -1,8 +1,9 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { queryClient } from '@/libs/tanstack-query'
-import { createStaff, deleteStaff, listStaffs, pushStaffToFirebase, updateStaff } from '@/services/staffs'
+import { createStaff, listStaffs, pushStaffToFirebase, deleteStaff, updateStaff } from '@/services/staffs'
 import { getPendingStaffs } from '@/services/local-storage'
 import type { StaffSchema } from './validation'
+import type { Staff } from './types'
 
 export function useStaffs() {
   return useQuery({
@@ -16,11 +17,10 @@ export function useCreateStaff() {
     mutationFn: (data: StaffSchema) => createStaff(data),
     onMutate: async (newStaff) => {
       await queryClient.cancelQueries({ queryKey: ['staffs'] })
+      const previousStaffs = queryClient.getQueryData<Staff[]>(['staffs'])
 
-      const previousStaffs = queryClient.getQueryData(['staffs'])
-
-      queryClient.setQueryData(['staffs'], (old: any) => {
-        const optimisticEntry = {
+      queryClient.setQueryData(['staffs'], (old: Staff[] | undefined) => {
+        const optimisticEntry: Staff = {
           id: `temp-${Date.now()}`,
           ...newStaff,
           _pendingSync: true,
@@ -39,14 +39,32 @@ export function useCreateStaff() {
   })
 }
 
+export function useUpdateStaff() {
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: StaffSchema }) => updateStaff(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staffs'] })
+    },
+  })
+}
+
+export function useDeleteStaff() {
+  return useMutation({
+    mutationFn: (id: string) => deleteStaff(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staffs'] })
+    },
+  })
+}
+
 export function useSyncPending() {
-  const pendingCount = getPendingStaffs().length
+  const pending = getPendingStaffs()
+  const pendingCount = pending.length
 
   const sync = async () => {
-    const pending = getPendingStaffs()
-    if (!pending.length) return
-
+    if (pendingCount === 0) return
     let anySynced = false
+
     for (const staff of pending) {
       const ok = await pushStaffToFirebase(staff)
       if (ok) anySynced = true
@@ -58,18 +76,4 @@ export function useSyncPending() {
   }
 
   return { pendingCount, sync }
-}
-
-export function useUpdateStaff() {
-  return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: StaffSchema }) => updateStaff(id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['staffs'] }),
-  })
-}
-
-export function useDeleteStaff() {
-  return useMutation({
-    mutationFn: (id: string) => deleteStaff(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['staffs'] }),
-  })
 }

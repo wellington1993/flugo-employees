@@ -8,18 +8,19 @@ const staffsCollection = collection(db, 'staffs')
 
 function withTimeout<T>(promise: Promise<T>, ms = 30000): Promise<T> {
   const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('Timeout: O banco de dados não respondeu.')), ms)
+    setTimeout(() => reject(new Error('Timeout: Banco de dados não respondeu.')), ms)
   )
   return Promise.race([promise, timeout])
 }
 
-async function logRemoteError(context: string, error: any) {
+async function logRemoteError(context: string, error: unknown) {
   if (!isFirebaseConfigured) return
   try {
     const logRef = collection(db, 'app_logs')
+    const err = error as { message?: string; code?: string }
     await addDoc(logRef, {
       context,
-      message: error.message || error.code || String(error),
+      message: err.message || err.code || String(error),
       userAgent: navigator.userAgent,
       timestamp: Date.now()
     })
@@ -62,14 +63,14 @@ export async function createStaff(data: StaffSchema): Promise<{ synced: boolean;
     
     removePendingByEmail(data.email)
     return { synced: true }
-  } catch (err: any) {
-    console.error('[Firebase] createStaff:', err)
+  } catch (err: unknown) {
+    const error = err as { code?: string; message?: string }
+    console.error('[Firebase] createStaff:', error)
     
-    // Backup local
     addPendingStaff(data)
     
     logRemoteError('createStaff', err).catch(() => {})
-    return { synced: false, error: err.code || err.message }
+    return { synced: false, error: error.code || error.message }
   }
 }
 
@@ -85,7 +86,7 @@ export async function pushStaffToFirebase(staff: Staff): Promise<boolean> {
       return true
     }
 
-    const { _localId: _, _pendingSync: __, id: ___, ...payload } = staff
+    const { _localId: _l, _pendingSync: _p, id: _i, ...payload } = staff
     await withTimeout(setDoc(staffDoc, { ...payload, createdAt: staff.createdAt || Date.now() }))
 
     removePendingByEmail(staff.email)

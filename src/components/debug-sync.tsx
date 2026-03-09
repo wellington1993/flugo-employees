@@ -44,8 +44,9 @@ export function DebugSync() {
         } else {
           addLog(`❌ FALHA: Rejeitado pelo Firebase.`)
         }
-      } catch (err: any) {
-        addLog(`❌ ERRO TÉCNICO: ${err.code || err.message}`)
+      } catch (err: unknown) {
+        const error = err as { code?: string; message?: string }
+        addLog(`❌ ERRO TÉCNICO: ${error.code || error.message}`)
       }
     }
 

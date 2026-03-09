@@ -9,6 +9,7 @@ import {
   FormControlLabel,
   LinearProgress,
   MenuItem,
+  Snackbar,
   Stack,
   Step,
   StepLabel,
@@ -38,9 +39,7 @@ type StaffFormProps = {
 export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormProps) {
   const navigate = useNavigate()
   const [activeStep, setActiveStep] = useState(0)
-  const [progress, setProgress] = useState(0)
-  const [submitError, setSubmitError] = useState<string | null>(null)
-  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ message: string; severity: 'success' | 'error' } | null>(null)
 
   const draftKey = isEdit ? null : 'staff_form_draft'
   const submittedRef = useRef(false)
@@ -68,52 +67,46 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
 
   const onSubmit = async (data: StaffSchema) => {
     try {
-      setSubmitError(null)
       if (isEdit && staffId) {
         await updateStaff({ id: staffId, data })
-        setSubmitSuccess('Colaborador atualizado com sucesso!')
+        setToast({ message: 'Colaborador atualizado com sucesso!', severity: 'success' })
       } else {
-        const result = await createStaff(data)
+        await createStaff(data)
         submittedRef.current = true
         if (draftKey) localStorage.removeItem(draftKey)
-        
-        if (result.synced) {
-          setSubmitSuccess('Colaborador cadastrado com sucesso!')
-        } else {
-          setSubmitSuccess(`Salvo localmente (sincronização pendente: ${result.error || 'offline'})`)
-        }
+        setToast({ message: 'Colaborador cadastrado com sucesso!', severity: 'success' })
       }
-      setTimeout(() => navigate('/staffs'), 2000)
+      setTimeout(() => navigate('/staffs'), 1500)
     } catch (err) {
-      setProgress(50)
-      setSubmitError(err instanceof Error ? err.message : 'Erro inesperado ao salvar.')
+      setToast({
+        message: err instanceof Error ? err.message : 'Erro inesperado ao salvar.',
+        severity: 'error',
+      })
     }
-  }
+    }
 
-  const isLastStep = activeStep === steps.length - 1
+    const isLastStep = activeStep === steps.length - 1
 
-  const handleNext = async () => {
+    const handleNext = async () => {
     const valid = await trigger(stepFields[activeStep])
     if (!valid) return
 
     if (isLastStep) {
-      setProgress(100)
       await handleSubmit(onSubmit)()
       return
     }
 
-    setProgress((prev) => prev + 100 / steps.length)
     setActiveStep((prev) => prev + 1)
-  }
+    }
 
-  const handleBack = () => {
+    const handleBack = () => {
     if (activeStep === 0) {
       navigate('/staffs')
       return
     }
-    setProgress((prev) => prev - 100 / steps.length)
     setActiveStep((prev) => prev - 1)
-  }
+    }
+  const currentProgress = activeStep === 0 ? 0 : activeStep === 1 ? 50 : 100
 
   return (
     <Box minHeight="50vh" display="flex" flexDirection="column" gap={3}>
@@ -121,11 +114,11 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
         <Stack direction="row" alignItems="center" gap={2} mb={0.5}>
           <LinearProgress
             variant="determinate"
-            value={progress}
+            value={currentProgress}
             sx={{ flex: 1, height: 6, borderRadius: 3 }}
           />
           <Typography variant="body2" color="text.secondary" minWidth={36}>
-            {Math.round(progress)}%
+            {currentProgress}%
           </Typography>
         </Stack>
       </Box>
@@ -248,19 +241,12 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
         </Box>
       </Box>
 
-      {submitSuccess && <Alert severity="success">{submitSuccess}</Alert>}
-      {submitError && (
-        <Alert severity="error" onClose={() => setSubmitError(null)}>
-          {submitError}
-        </Alert>
-      )}
-
       <Stack direction="row" justifyContent="space-between" mt="auto" pt={2}>
         <Button
           variant="outlined"
           onClick={handleBack}
           startIcon={<ArrowBackIcon />}
-          disabled={isPending || !!submitSuccess}
+          disabled={isPending}
           sx={{ borderColor: 'divider', color: 'text.secondary' }}
         >
           Voltar
@@ -268,11 +254,22 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
         <Button
           variant="contained"
           onClick={handleNext}
-          disabled={isPending || !!submitSuccess}
+          disabled={isPending}
         >
           {isLastStep ? (isPending ? 'Salvando...' : isEdit ? 'Salvar' : 'Concluir') : 'Próximo'}
         </Button>
       </Stack>
+
+      <Snackbar
+        open={!!toast}
+        autoHideDuration={3000}
+        onClose={() => setToast(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={toast?.severity} onClose={() => setToast(null)} sx={{ width: '100%' }}>
+          {toast?.message}
+        </Alert>
+      </Snackbar>
     </Box>
   )
 }

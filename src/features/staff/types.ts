@@ -1,5 +1,5 @@
 export type StaffStatus = 'ACTIVE' | 'INACTIVE'
-export type StaffDepartments = 'Design' | 'TI' | 'Marketing' | 'Produto' | 'RH' | 'Financeiro' | 'Comercial' | 'Operações'
+export type StaffDepartments = 'TI' | 'Design' | 'Marketing' | 'Produto'
 
 export type Staff = {
   id: string

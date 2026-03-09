@@ -11,7 +11,7 @@ const staff1 = {
 const staff2 = {
   name: 'Bruno Costa',
   email: 'bruno@empresa.com',
-  department: 'RH' as const,
+  department: 'Design' as const,
   status: 'ACTIVE' as const,
 }
 

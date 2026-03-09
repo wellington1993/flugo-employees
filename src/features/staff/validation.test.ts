@@ -18,8 +18,8 @@ describe('staffSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('rejeita nome com mais de 100 caracteres', () => {
-    const result = staffSchema.safeParse({ ...validData, name: 'A'.repeat(101) })
+  it('rejeita nome com mais de 80 caracteres', () => {
+    const result = staffSchema.safeParse({ ...validData, name: 'A'.repeat(81) })
     expect(result.success).toBe(false)
   })
 
@@ -65,8 +65,8 @@ describe('staffSchema', () => {
 })
 
 describe('departments', () => {
-  it('contém os 8 departamentos esperados', () => {
-    const expected = ['Design', 'TI', 'Marketing', 'Produto', 'RH', 'Financeiro', 'Comercial', 'Operações']
+  it('contém os 4 departamentos esperados', () => {
+    const expected = ['TI', 'Design', 'Marketing', 'Produto']
     expect(departments).toEqual(expected)
   })
 
