@@ -24,7 +24,6 @@ export async function listStaffs(): Promise<Staff[]> {
     const snapshot = await withTimeout(getDocs(staffsCollection))
     const fromFirebase = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Staff))
 
-    // Remove from localStorage any item already persisted in Firebase
     const firebaseEmails = new Set(fromFirebase.map(s => s.email))
     const stillPending = pending.filter(s => !firebaseEmails.has(s.email))
     if (stillPending.length !== pending.length) {
@@ -38,7 +37,11 @@ export async function listStaffs(): Promise<Staff[]> {
 }
 
 export async function createStaff(data: StaffSchema): Promise<{ synced: boolean }> {
-  // Always save locally first so the user gets immediate feedback
+  const existing = getPendingStaffs().find(s => s.email === data.email)
+  if (existing) {
+    throw new Error('Já existe um colaborador cadastrado com esse e-mail.')
+  }
+
   const localEntry = addPendingStaff(data)
 
   if (!isFirebaseConfigured) return { synced: false }
@@ -54,16 +57,37 @@ export async function createStaff(data: StaffSchema): Promise<{ synced: boolean 
     const { _localId, _pendingSync, ...payload } = localEntry
     await withTimeout(addDoc(staffsCollection, { ...payload, createdAt: Date.now() }))
 
-    // Synced — remove from localStorage
     removePendingByEmail(data.email)
     return { synced: true }
   } catch (err) {
-    // If it was a duplicate error, re-throw so the form can show it
     if (err instanceof Error && err.message.includes('e-mail')) {
       removePendingByEmail(data.email)
       throw err
     }
-    // Any other error (network, config): keep in localStorage
     return { synced: false }
+  }
+}
+
+// Used only by useSyncPending — does NOT touch localStorage
+export async function pushStaffToFirebase(staff: Staff): Promise<boolean> {
+  if (!isFirebaseConfigured) return false
+
+  try {
+    const duplicate = await withTimeout(
+      getDocs(query(staffsCollection, where('email', '==', staff.email)))
+    )
+    if (!duplicate.empty) {
+      // Already in Firebase — just clean up localStorage
+      removePendingByEmail(staff.email)
+      return true
+    }
+
+    const { _localId, _pendingSync, id, ...payload } = staff
+    await withTimeout(addDoc(staffsCollection, { ...payload, createdAt: Date.now() }))
+
+    removePendingByEmail(staff.email)
+    return true
+  } catch {
+    return false
   }
 }

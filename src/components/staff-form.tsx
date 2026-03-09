@@ -18,6 +18,7 @@ import {
   Typography,
 } from '@mui/material'
 import CheckIcon from '@mui/icons-material/Check'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { staffSchema, departments, type StaffSchema } from '@/features/staff/validation'
 import { useCreateStaff } from '@/features/staff/hooks'
 
@@ -226,13 +227,19 @@ export function StaffForm() {
       )}
 
       <Stack direction="row" justifyContent="space-between" mt="auto" pt={2}>
-        <Button onClick={handleBack} sx={{ color: 'text.secondary' }}>
+        <Button
+          variant="outlined"
+          onClick={handleBack}
+          startIcon={<ArrowBackIcon />}
+          disabled={isPending || !!submitSuccess}
+          sx={{ borderColor: 'divider', color: 'text.secondary' }}
+        >
           Voltar
         </Button>
         <Button
           variant="contained"
           onClick={handleNext}
-          disabled={isPending}
+          disabled={isPending || !!submitSuccess}
         >
           {isLastStep ? (isPending ? 'Salvando...' : 'Concluir') : 'Próximo'}
         </Button>

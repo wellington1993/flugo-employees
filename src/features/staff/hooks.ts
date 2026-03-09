@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { queryClient } from '@/libs/tanstack-query'
-import { createStaff, listStaffs } from '@/services/staffs'
+import { createStaff, listStaffs, pushStaffToFirebase } from '@/services/staffs'
 import { getPendingStaffs } from '@/services/local-storage'
 import type { StaffSchema } from './validation'
 
@@ -27,16 +27,15 @@ export function useSyncPending() {
     const pending = getPendingStaffs()
     if (!pending.length) return
 
+    let anySynced = false
     for (const staff of pending) {
-      try {
-        const { _localId, _pendingSync, id, ...data } = staff
-        await createStaff(data as StaffSchema)
-      } catch {
-        // ignore individual failures — will retry next time
-      }
+      const ok = await pushStaffToFirebase(staff)
+      if (ok) anySynced = true
     }
 
-    queryClient.invalidateQueries({ queryKey: ['staffs'] })
+    if (anySynced) {
+      queryClient.invalidateQueries({ queryKey: ['staffs'] })
+    }
   }
 
   return { pendingCount, sync }

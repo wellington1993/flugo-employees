@@ -16,7 +16,7 @@ function Loading() {
 
 export function AppRouter() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Suspense fallback={<Loading />}>
         <Routes>
           <Route element={<App />}>

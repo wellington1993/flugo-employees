@@ -20,6 +20,7 @@ import {
   type TableCellProps,
 } from '@mui/material'
 import SyncIcon from '@mui/icons-material/Sync'
+import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1'
 import { visuallyHidden } from '@mui/utils'
 import { Link } from 'react-router-dom'
 import { useStaffs, useSyncPending } from '@/features/staff/hooks'
@@ -36,9 +37,9 @@ const columns: { id: keyof Staff; label: string; align?: TableCellProps['align']
 
 export function StaffList() {
   const { data: staffs, isLoading, isError } = useStaffs()
-  const { order, orderBy, createSortHandler } = useSortTable('name')
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(10)
+  const { order, orderBy, createSortHandler } = useSortTable('name', setPage)
   const { pendingCount, sync } = useSyncPending()
 
   useEffect(() => {
@@ -54,7 +55,7 @@ export function StaffList() {
         <Typography variant="h5" fontWeight={600}>
           Colaboradores
         </Typography>
-        <Button variant="contained" component={Link} to="/staffs/new" size="large">
+        <Button variant="contained" component={Link} to="/staffs/new" startIcon={<PersonAddAlt1Icon />}>
           Novo Colaborador
         </Button>
       </Stack>

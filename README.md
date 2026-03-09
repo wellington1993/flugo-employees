@@ -6,7 +6,10 @@ O formulário de cadastro é dividido em duas etapas — informações básicas 
 
 ## Acesso
 
-O deploy está disponível em: https://flugo-employees-theta.vercel.app
+| Ambiente | URL |
+|---|---|
+| Vercel (produção) | https://flugo-employees-theta.vercel.app |
+| GitHub Pages | https://wellington1993.github.io/flugo-employees/ |
 
 ## Pré-requisitos
 
@@ -97,6 +100,28 @@ docker build \
 
 docker run -p 3000:80 flugo-employees
 ```
+
+## Deploy no GitHub Pages
+
+O deploy no GitHub Pages é feito automaticamente via GitHub Actions a cada push na branch `main`.
+
+Para que o workflow funcione, é necessário configurar os seguintes secrets no repositório:
+
+**GitHub → Settings → Secrets and variables → Actions → New repository secret**
+
+| Secret | Valor |
+|---|---|
+| `VITE_FIREBASE_API_KEY` | chave da API do Firebase |
+| `VITE_FIREBASE_AUTH_DOMAIN` | auth domain do projeto |
+| `VITE_FIREBASE_PROJECT_ID` | ID do projeto Firebase |
+| `VITE_FIREBASE_STORAGE_BUCKET` | storage bucket |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | sender ID |
+| `VITE_FIREBASE_APP_ID` | app ID |
+
+Após o primeiro deploy via Actions, habilitar o GitHub Pages:
+
+**GitHub → Settings → Pages → Source → Deploy from a branch → Branch: `gh-pages` → / (root)**
+
 
 ## Scripts disponíveis
 
