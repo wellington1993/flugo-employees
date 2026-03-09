@@ -4,8 +4,6 @@ import {
   Box,
   Button,
   Chip,
-  IconButton,
-  InputAdornment,
   MenuItem,
   Paper,
   Stack,
@@ -25,11 +23,9 @@ import {
 } from '@mui/material'
 import SyncIcon from '@mui/icons-material/Sync'
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1'
-import EditIcon from '@mui/icons-material/Edit'
-import DeleteIcon from '@mui/icons-material/Delete'
 import SearchIcon from '@mui/icons-material/Search'
 import { visuallyHidden } from '@mui/utils'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useStaffs, useSyncPending, useDeleteStaff } from '@/features/staff/hooks'
 import { useSortTable } from '@/hooks/use-sort-table'
 import { getComparator } from '@/helpers/table-sorting'
@@ -56,7 +52,6 @@ const departmentOptions: { value: StaffDepartments | ''; label: string }[] = [
 ]
 
 export function StaffList() {
-  const navigate = useNavigate()
   const { data: staffs, isLoading, isError } = useStaffs()
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(10)
