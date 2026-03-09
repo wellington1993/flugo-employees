@@ -6,7 +6,7 @@ O formulário de cadastro é dividido em duas etapas — informações básicas 
 
 ## Acesso
 
-O deploy está disponível em: https://flugo-employees.vercel.app
+O deploy está disponível em: https://flugo-employees-theta.vercel.app
 
 ## Pré-requisitos
 
@@ -18,7 +18,7 @@ O deploy está disponível em: https://flugo-employees.vercel.app
 1. Clone o repositório:
 
 ```
-git clone https://github.com/wellingtonpoll/flugo-employees.git
+git clone https://github.com/wellington1993/flugo-employees.git
 cd flugo-employees
 ```
 
