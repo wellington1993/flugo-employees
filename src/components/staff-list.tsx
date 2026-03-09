@@ -101,46 +101,49 @@ export function StaffList() {
         </Button>
       </Stack>
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} gap={2} mb={2}>
-        <TextField
-          size="small"
-          placeholder="Buscar por nome ou e-mail"
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(0) }}
-          sx={{ flex: 1 }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon fontSize="small" />
-              </InputAdornment>
-            ),
-          }}
-        />
-        <TextField
-          select
-          size="small"
-          label="Status"
-          value={filterStatus}
-          onChange={(e) => { setFilterStatus(e.target.value as StaffStatus | ''); setPage(0) }}
-          sx={{ minWidth: 130 }}
-        >
-          {statusOptions.map((o) => (
-            <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          select
-          size="small"
-          label="Departamento"
-          value={filterDepartment}
-          onChange={(e) => { setFilterDepartment(e.target.value as StaffDepartments | ''); setPage(0) }}
-          sx={{ minWidth: 160 }}
-        >
-          {departmentOptions.map((o) => (
-            <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
-          ))}
-        </TextField>
-      </Stack>
+      {/* Filters hidden to align with original challenge scope */}
+      <Box sx={{ display: 'none' }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} gap={2} mb={2}>
+          <TextField
+            size="small"
+            placeholder="Buscar por nome ou e-mail"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(0) }}
+            sx={{ flex: 1 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <TextField
+            select
+            size="small"
+            label="Status"
+            value={filterStatus}
+            onChange={(e) => { setFilterStatus(e.target.value as StaffStatus | ''); setPage(0) }}
+            sx={{ minWidth: 130 }}
+          >
+            {statusOptions.map((o) => (
+              <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            size="small"
+            label="Departamento"
+            value={filterDepartment}
+            onChange={(e) => { setFilterDepartment(e.target.value as StaffDepartments | ''); setPage(0) }}
+            sx={{ minWidth: 160 }}
+          >
+            {departmentOptions.map((o) => (
+              <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+            ))}
+          </TextField>
+        </Stack>
+      </Box>
 
       <TableContainer component={Paper} elevation={0} variant="outlined">
         <Table>
@@ -162,7 +165,8 @@ export function StaffList() {
                   </TableSortLabel>
                 </TableCell>
               ))}
-              <TableCell align="right" sx={{ width: 96 }} />
+              {/* Action column hidden to align with original scope */}
+              {/* <TableCell align="right" sx={{ width: 96 }} /> */}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -178,19 +182,19 @@ export function StaffList() {
                   <TableCell><Skeleton variant="text" width={180} /></TableCell>
                   <TableCell><Skeleton variant="text" width={100} /></TableCell>
                   <TableCell align="center"><Skeleton variant="rounded" width={80} height={24} /></TableCell>
-                  <TableCell />
+                  {/* <TableCell /> */}
                 </TableRow>
               ))}
             {isError && (
               <TableRow>
-                <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'error.main' }}>
+                <TableCell colSpan={4} align="center" sx={{ py: 4, color: 'error.main' }}>
                   Não foi possível carregar os colaboradores. Verifique sua conexão e tente novamente.
                 </TableCell>
               </TableRow>
             )}
             {!isLoading && !isError && !filtered.length && (
               <TableRow>
-                <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                <TableCell colSpan={4} align="center" sx={{ py: 4, color: 'text.secondary' }}>
                   {staffs?.length ? 'Nenhum resultado para os filtros aplicados.' : 'Nenhum colaborador cadastrado ainda.'}
                 </TableCell>
               </TableRow>
@@ -232,7 +236,8 @@ export function StaffList() {
                     />
                   )}
                 </TableCell>
-                <TableCell align="right">
+                {/* Edit/Delete actions hidden to align with original scope */}
+                {/* <TableCell align="right">
                   {!row._pendingSync && (
                     <Stack direction="row" justifyContent="flex-end" gap={0.5}>
                       <Tooltip title="Editar">
@@ -247,7 +252,7 @@ export function StaffList() {
                       </Tooltip>
                     </Stack>
                   )}
-                </TableCell>
+                </TableCell> */}
               </TableRow>
             ))}
           </TableBody>

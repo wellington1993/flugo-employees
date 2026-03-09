@@ -8,12 +8,11 @@ const staffsCollection = collection(db, 'staffs')
 
 function withTimeout<T>(promise: Promise<T>, ms = 30000): Promise<T> {
   const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('O banco de dados demorou muito para responder (Timeout).')), ms)
+    setTimeout(() => reject(new Error('Timeout: Banco de dados não respondeu.')), ms)
   )
   return Promise.race([promise, timeout])
 }
 
-// Remote logging for production diagnostics
 async function logRemoteError(context: string, error: any) {
   if (!isFirebaseConfigured) return
   try {
@@ -21,23 +20,17 @@ async function logRemoteError(context: string, error: any) {
     await addDoc(logRef, {
       context,
       message: error.message || error.code || String(error),
-      code: error.code || 'unknown',
       userAgent: navigator.userAgent,
-      timestamp: Date.now(),
-      env: import.meta.env.MODE
+      timestamp: Date.now()
     })
   } catch (e) {
-    console.error('Falha ao gravar log remoto:', e)
+    console.error('Remote log failed', e)
   }
 }
 
 export async function listStaffs(): Promise<Staff[]> {
   const pending = getPendingStaffs()
-
-  if (!isFirebaseConfigured) {
-    console.warn('Firebase não configurado. Usando apenas dados locais.')
-    return pending
-  }
+  if (!isFirebaseConfigured) return pending
 
   try {
     const snapshot = await withTimeout(getDocs(staffsCollection))
@@ -45,39 +38,38 @@ export async function listStaffs(): Promise<Staff[]> {
 
     const firebaseIds = new Set(snapshot.docs.map(d => d.id))
     const stillPending = pending.filter(s => !firebaseIds.has(s.email))
+    
     if (stillPending.length !== pending.length) {
       localStorage.setItem('flugo_pending_staffs', JSON.stringify(stillPending))
     }
 
     return [...fromFirebase, ...stillPending]
   } catch (err) {
-    console.error('Erro ao listar do Firebase:', err)
+    console.error('Fetch failed', err)
     return pending
   }
 }
 
-export async function createStaff(data: StaffSchema): Promise<void> {
+export async function createStaff(data: StaffSchema): Promise<{ synced: boolean; error?: string }> {
   if (!isFirebaseConfigured) {
-    throw new Error('Configuração do Firebase ausente no ambiente de produção.')
+    addPendingStaff(data)
+    return { synced: false, error: 'Firebase offline' }
   }
 
   try {
     const staffDoc = doc(db, 'staffs', data.email)
-    
-    // Tentativa direta no Firebase (Timeout aumentado para 30s)
     await withTimeout(setDoc(staffDoc, { ...data, createdAt: Date.now() }))
-
-    // Limpa do cache local se existir (sucesso real)
-    removePendingByEmail(data.email)
-  } catch (err: any) {
-    const errorMsg = `Falha no Banco: ${err.code || 'Timeout'} - ${err.message}`
-    console.error('[Firebase]', err)
     
-    // Backup de segurança no LocalStorage
+    removePendingByEmail(data.email)
+    return { synced: true }
+  } catch (err: any) {
+    console.error('Sync failed', err)
+    
+    // Fallback redundancy
     addPendingStaff(data)
     
     await logRemoteError('createStaff', err)
-    throw new Error(errorMsg)
+    return { synced: false, error: err.code || err.message }
   }
 }
 
@@ -100,7 +92,7 @@ export async function pushStaffToFirebase(staff: Staff): Promise<boolean> {
     return true
   } catch (err: unknown) {
     const error = err as { code?: string; message?: string }
-    console.error('Erro na sincronização de fundo:', error.code || error.message)
+    console.error('Background sync failed', error.code || error.message)
     return false
   }
 }

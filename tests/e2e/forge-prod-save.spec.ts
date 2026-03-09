@@ -19,8 +19,13 @@ test('Forjar cadastro em produção e capturar erros reais', async ({ page }) =>
   await page.getByLabel('E-mail').fill(`force-${Date.now()}@test.com`)
   await page.getByRole('button', { name: /Próximo/i }).click()
 
+  // Aguarda a transição para o Passo 2
+  await expect(page.getByText('Informações Profissionais')).toBeVisible({ timeout: 10000 })
+
   // 2. Preenche o formulário (Passo 2)
-  await page.getByLabel('Departamento').click()
+  const deptSelect = page.getByLabel('Departamento')
+  await expect(deptSelect).toBeVisible({ timeout: 10000 })
+  await deptSelect.click()
   await page.getByRole('option', { name: 'TI', exact: true }).click()
 
   // 3. Tenta salvar
