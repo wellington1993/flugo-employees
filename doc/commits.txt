@@ -1,0 +1,249 @@
+Historico de commits - do inicio ao fim
+Wellington - Desafio Flugo
+---
+
+Escrevi isso pra lembrar o que fiz em cada etapa e conseguir explicar
+o processo na entrevista.
+
+Todos os commits foram no mesmo dia (09/03/2026) porque comecei e terminei
+o desafio em um unico dia de trabalho.
+
+
+FASE 1 - ESTRUTURA INICIAL
+--------------------------
+
+fee5445 - scaffold inicial do projeto
+  Criei o projeto com Vite + React + TypeScript. Escolhi o Vite porque e
+  muito mais rapido que o Create React App e o webpack. TypeScript porque
+  queria mostrar que sei trabalhar com tipagem estatica. Nessa primeira
+  versao tinha so a estrutura basica de pastas e o App.tsx vazio.
+
+69e780b - adiciona URL de deploy no README
+  Coloquei o link de producao no README logo cedo pra deixar claro que
+  o projeto ia ser deployado de verdade, nao so rodar local.
+
+f304650 - corrige roteamento SPA no Vercel
+  SPA (Single Page Application) tem um problema conhecido no Vercel: quando
+  o usuario entra direto em uma URL como /colaboradores/novo, o servidor
+  nao encontra o arquivo e da 404. Corrigi adicionando o arquivo vercel.json
+  com a regra de rewrite que manda qualquer rota pro index.html.
+
+
+FASE 2 - FUNCIONALIDADE BASICA
+------------------------------
+
+b38f545 - estados de erro, loading, lista vazia e validacao de e-mail duplicado
+  Primeira versao funcional do formulario e da lista. Adicionei os estados
+  de carregamento (spinner), erro (mensagem de falha), e lista vazia.
+  Tambem fiz a validacao de email duplicado ja nessa fase.
+
+9711180 - navegacao e feedback de sucesso ao enviar o formulario
+  Depois de salvar, o formulario precisava redirecionar pra lista e mostrar
+  algum aviso de sucesso. Corrigi isso aqui.
+
+63455c5 - falha rapida sem config Firebase, timeout de consulta e paginacao
+  Se as variaveis do Firebase nao estiverem configuradas, o app caiu em loop
+  de erro silencioso. Adicionei uma checagem rapida (fail fast) pra mostrar
+  mensagem clara. Tambem adicionei timeout nas consultas e paginacao na tabela.
+
+
+FASE 3 - FIREBASE E INFRA
+-------------------------
+
+0d89ede - fallback localStorage, Docker, CI/CD e regras do Firestore
+  Commit grande. Aqui adicionei:
+  - O fallback pro localStorage quando o Firebase nao esta disponivel
+  - Dockerfile e docker-compose pra rodar em container
+  - Pipeline de CI no GitHub Actions
+  - Regras do Firestore (por enquanto abertas pra desenvolvimento)
+
+e1dd47a - deploy no GitHub Pages, melhorias de UI e Firebase configurado
+  Configurei o Firebase de verdade e fiz o primeiro deploy. Tambem melhorei
+  a interface visual nessa fase.
+
+7633f98 - MIME type nos chunks do Vercel e deduplicacao do localStorage
+  O Vercel estava servindo os arquivos JavaScript com MIME type errado em
+  alguns casos, o que fazia o browser recusar carregar. Corrigi a config
+  de build. Tambem corrigi um bug onde o mesmo colaborador aparecia duplicado
+  no localStorage.
+
+76b75d3 - adiciona trigger manual no workflow de deploy para GitHub Pages
+  Adicionei a opcao de rodar o deploy manualmente pelo painel do GitHub,
+  sem precisar fazer push.
+
+
+FASE 4 - QUALIDADE E EXPERIENCIA DO USUARIO
+--------------------------------------------
+
+a0a75d2 - setup vitest e testes unitarios para logica central
+  Configurei o Vitest e escrevi os primeiros testes unitarios. Cobri a
+  validacao, o localStorage, o helper de ordenacao e o hook de tabela.
+  Ao todo 38 testes passando.
+
+cb0bbf4 - otimiza queries Firebase e sync offline com email como id do documento
+  Mudei a estrategia de ID do documento no Firestore: em vez de gerar um
+  ID aleatorio, uso o proprio email como ID. Isso garante unicidade no banco
+  sem precisar de query extra pra verificar, e simplifica a logica de sync.
+
+e195a85 - dockeriza e configura playwright para testes E2E
+  Adicionei o Playwright para testes de ponta a ponta. Configurei o
+  ambiente E2E e os primeiros testes automatizados no browser.
+
+4e279f4 - adiciona log de erro detalhado do Firebase para diagnostico
+  Adicionei logs mais detalhados no console para facilitar o diagnostico
+  de erros do Firebase em producao.
+
+268b1a2 - habilita persistencia offline nativa do Firestore
+  O Firebase tem um modo de persistencia local que salva os dados no
+  IndexedDB do browser. Habilitei isso pra que o app funcione offline
+  e sincronize automaticamente quando voltar online.
+
+a2ca0eb - persistencia de rascunho no formulario e updates otimistas
+  Duas melhorias importantes:
+  1. O formulario salva o rascunho automaticamente no localStorage enquanto
+     o usuario preenche. Se fechar por acidente, os dados ainda estao la.
+  2. Update otimista: o colaborador aparece na lista imediatamente ao clicar
+     em salvar, antes de confirmar no servidor. Se der erro, desaparece.
+     Isso deixa a interface muito mais rapida na percepcao do usuario.
+
+4831231 - estabiliza inicializacao Firebase e habilita auto-retry
+  Ajustei a ordem de inicializacao do Firebase pra evitar erros de
+  "app already initialized". Tambem habilitei retry automatico nas
+  operacoes que falhavam por timeout.
+
+3d13f5d - skeleton loading na lista de colaboradores
+  Adicionei os skeletons (aquelas barras cinzas que pulsam) enquanto a
+  lista carrega. Fica muito mais profissional do que um spinner generico.
+
+973d240 - ajusta configuracoes de resiliencia do Firebase para producao
+  Ajustei os timeouts e configuracoes do Firebase especificamente pra
+  ambiente de producao, que tem latencias diferentes do local.
+
+1a1c398 - finaliza persistencia de formulario, updates otimistas e smoke tests
+  Ajustes finais na persistencia do rascunho e nos updates otimistas.
+  Tambem finalizei os smoke tests de producao.
+
+
+FASE 5 - BUGS E DEBUG
+---------------------
+
+3abc072 - adiciona links de producao no README e atualiza metadados
+  Coloquei os links de producao (Vercel e GitHub Pages) no README.
+
+c86d3d3 - adiciona smoke tests e reescreve E2E com mais cenarios
+  Reescrevi os testes E2E pra cobrir mais casos. Separei os testes
+  que gravam dados dos que so leem, pra nao poluir producao no CI.
+
+2bdc0e8 - corrige bug de Pendente no Firebase
+  Tinha um bug onde colaboradores ficavam marcados como "Pendente"
+  mesmo depois de sincronizados com o Firebase. O problema era que
+  o campo _pendingSync nao estava sendo removido corretamente depois
+  do sync.
+
+9c29b4e - exclui tests/e2e do Vitest para evitar conflito com Playwright
+  O Vitest estava tentando rodar os arquivos .spec.ts do Playwright como
+  se fossem testes unitarios, causando conflito. Corrigi excluindo a
+  pasta tests/e2e da configuracao do Vitest.
+
+c19ffca - sincroniza payload entre criacao e push pra evitar conflito de regras
+  As regras do Firestore esperavam um campo createdAt, mas o payload que
+  estava sendo enviado nao tinha esse campo em alguns fluxos. Corrigi.
+
+a736946 - remove referencias ao GitHub Pages e centraliza no Vercel
+  Decidi usar so o Vercel como producao. Removi as referencias ao
+  GitHub Pages pra nao confundir.
+
+1380dab - restaura campo createdAt e simplifica regras do Firestore
+  Continuacao da correcao anterior. Simplificou as regras do Firestore
+  pra evitar mais conflitos.
+
+592b60c - simplifica README e remove comentarios desnecessarios
+  Limpeza de codigo e documentacao.
+
+ca2b70e - refinamento tecnico da documentacao e mensagens de erro
+  Melhorei as mensagens de erro pra serem mais claras.
+
+
+FASE 6 - DEBUG DE PRODUCAO
+--------------------------
+
+9bae0e8 - melhora relato de erros do Firebase na interface
+  Os erros do Firebase estavam aparecendo so no console. Passei a mostra-los
+  na interface tambem pra facilitar o diagnostico em producao.
+
+8b49530 - editar e excluir colaboradores, filtros, pagina 404 e correcao de pendente
+  Adicionei as funcionalidades de editar e excluir colaboradores, com dialog
+  de confirmacao. Tambem adicionei filtros na lista e a pagina 404.
+
+531cd69 - desabilita fallback silencioso e habilita log remoto de erros
+  Durante o debug percebi que o fallback silencioso escondia os erros do
+  Firebase. Desabilitei o fallback pra ver os erros reais. Tambem adicionei
+  log remoto: erros sao salvos numa colecao app_logs no proprio Firestore.
+
+b42e4f2 - adiciona rota de diagnostico oculta para debug em producao
+  Criei a rota /debug com um painel que mostra a config do Firebase,
+  os pendentes no localStorage, e permite forcar a sincronizacao.
+  Util pra diagnosticar sem precisar abrir o DevTools.
+
+ad3b201 - integra Vercel Analytics e Speed Insights para monitoramento
+  Adicionei os pacotes de analytics da Vercel pra monitorar uso e
+  performance em producao.
+
+9e50216 - desabilita fallback silencioso, expoe erros reais e corrige build
+  Continuacao do debug. Expus os erros reais do Firebase na interface.
+
+d67f286 - remove fallback local, joga erros do Firebase pra UI
+  Com os erros expostos, descobri que o problema nao era o codigo mas
+  as variaveis de ambiente. Continuei ajustando.
+
+4d66e24 - limpa variaveis nao usadas e corrige build
+  Limpeza de codigo pra fazer o build passar sem warnings.
+
+
+FASE 7 - CORRECAO CRITICA DAS VARIAVEIS DE AMBIENTE
+-----------------------------------------------------
+
+a9ffd99 - testa integracao Vercel GitHub webhook
+  Teste de integracao do CI com o Vercel.
+
+5fa8e46 - aumenta timeout Firebase pra 30s e desabilita verificacao de fallback
+  Aumentei o timeout esperando que fosse problema de latencia. Nao era.
+
+4930404 - limpa variaveis Firebase no Vercel (remove corrupcao CRLF)
+  Esse foi o commit mais importante dessa fase.
+  
+  O problema real: as variaveis de ambiente tinham \r\n (caractere de nova
+  linha do Windows) no final do valor. O Vercel guardava literalmente
+  "flugo-employees-wts\r\n" como nome do projeto. O Firebase recebia esse
+  valor corrompido e nao conseguia conectar.
+  
+  Tive que usar a API REST do Vercel diretamente (nao o CLI) pra recriar
+  as variaveis sem o \r\n. O CLI do Vercel via PowerShell tambem adicionava
+  o \r\n porque o pipe do PowerShell inclui o caractere de nova linha.
+  
+  Depois disso o Firebase conectou normalmente.
+
+
+FASE 8 - POLIMENTO FINAL
+------------------------
+
+d922fdf - oculta funcionalidades avancadas da interface
+  Filtros, editar e excluir ficaram no codigo mas ocultos da interface.
+  O desafio original nao pedia essas funcionalidades e preferi nao
+  mostrar algo que nao foi pedido pra nao correr risco.
+
+89deb14 - limpa codigo nao utilizado e finaliza UI para escopo original
+  Limpeza geral: removi imports sem uso, comentarios desnecessarios,
+  e ajustei detalhes visuais.
+
+3aea5cd - restaura import do InputAdornment e finaliza build limpo
+  Um import tinha sido removido por acidente durante a limpeza, causando
+  erro de build. Corrigi.
+
+cc6dd49 - mensagens de validacao em portugues e verificacao de email duplicado
+  Ultimo commit. Duas correcoes:
+  1. O Zod v4 usa "Invalid input" por padrao nos campos enum. Troquei
+     todas as mensagens para portugues: "Selecione um departamento",
+     "Status invalido", etc.
+  2. A verificacao de email duplicado agora funciona em tempo real no
+     campo, mostrando o erro antes de avancar pro segundo passo do formulario.
