@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -36,7 +36,7 @@ export function StaffForm() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
 
-  const { control, handleSubmit, trigger, watch, reset } = useForm<StaffSchema>({
+  const { control, handleSubmit, trigger, watch } = useForm<StaffSchema>({
     mode: 'onChange',
     resolver: zodResolver(staffSchema),
     defaultValues: JSON.parse(localStorage.getItem('staff_form_draft') || '{}') || {
