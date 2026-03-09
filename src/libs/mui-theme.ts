@@ -7,12 +7,12 @@ export const theme = createTheme({
       paper: '#fff',
     },
     primary: {
-      main: '#22C55E',
+      main: '#53bf53', // Verde Flugo
       contrastText: '#fff',
     },
     success: {
-      main: '#22C55E',
-      light: '#DEF7EC',
+      main: '#53bf53',
+      light: '#e8f5e9',
     },
     error: {
       main: '#EF4444',

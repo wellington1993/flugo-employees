@@ -174,7 +174,7 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
                 render={({ field, fieldState }) => (
                   <TextField
                     {...field}
-                    label="Nome"
+                    label="Título"
                     fullWidth
                     error={!!fieldState.error}
                     helperText={fieldState.error?.message}
