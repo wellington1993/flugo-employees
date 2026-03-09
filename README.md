@@ -2,7 +2,7 @@
 
 Aplicação de cadastro e listagem de colaboradores desenvolvida como parte do desafio técnico da Flugo.
 
-O formulário de cadastro é dividido em duas etapas — informações básicas e informações profissionais — com validação por etapa e barra de progresso. Os dados são persistidos no Firebase Firestore.
+O formulário de cadastro é dividido em duas etapas — informações básicas e informações profissionais — com validação por etapa e barra de progresso. Os dados são persistidos no Firebase Firestore. Quando o Firebase não está disponível, os dados são salvos localmente no navegador e sincronizados automaticamente assim que a conexão for restabelecida.
 
 ## Acesso
 
@@ -59,22 +59,44 @@ VITE_FIREBASE_APP_ID=seu_app_id
 
 Há um arquivo `.env.example` na raiz como referência.
 
-### Regras do Firestore (modo desenvolvimento)
+### Regras do Firestore
 
-No console do Firebase, em **Firestore Database > Regras**, substitua o conteúdo por:
+O arquivo `firestore.rules` na raiz do projeto define as regras de segurança. Para fazer o deploy das regras:
 
 ```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
-    }
-  }
-}
+npx firebase-tools deploy --only firestore:rules --project SEU_PROJECT_ID
 ```
 
-Essas regras permitem acesso total sem autenticação. Para produção, configure regras mais restritivas.
+## Como rodar com Docker
+
+Certifique-se de ter o [Docker](https://docs.docker.com/get-docker/) instalado.
+
+### Com docker-compose (recomendado)
+
+1. Crie o arquivo `.env` com as credenciais do Firebase (igual ao passo acima).
+
+2. Suba o container:
+
+```
+docker compose up --build
+```
+
+A aplicação estará disponível em `http://localhost:3000`.
+
+### Build manual
+
+```
+docker build \
+  --build-arg VITE_FIREBASE_API_KEY=sua_api_key \
+  --build-arg VITE_FIREBASE_AUTH_DOMAIN=seu_auth_domain \
+  --build-arg VITE_FIREBASE_PROJECT_ID=seu_project_id \
+  --build-arg VITE_FIREBASE_STORAGE_BUCKET=seu_storage_bucket \
+  --build-arg VITE_FIREBASE_MESSAGING_SENDER_ID=seu_sender_id \
+  --build-arg VITE_FIREBASE_APP_ID=seu_app_id \
+  -t flugo-employees .
+
+docker run -p 3000:80 flugo-employees
+```
 
 ## Scripts disponíveis
 
@@ -82,11 +104,12 @@ Essas regras permitem acesso total sem autenticação. Para produção, configur
 npm run dev      # inicia o servidor de desenvolvimento
 npm run build    # gera o build de produção
 npm run preview  # pré-visualiza o build localmente
+npm run lint     # verifica o código com ESLint
 ```
 
 ## Tecnologias
 
-- React 18 + TypeScript
+- React 19 + TypeScript
 - Vite
 - Material UI v7
 - React Hook Form + Zod

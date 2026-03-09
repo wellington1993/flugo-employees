@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Avatar,
   Box,
@@ -15,12 +15,14 @@ import {
   TablePagination,
   TableRow,
   TableSortLabel,
+  Tooltip,
   Typography,
   type TableCellProps,
 } from '@mui/material'
+import SyncIcon from '@mui/icons-material/Sync'
 import { visuallyHidden } from '@mui/utils'
 import { Link } from 'react-router-dom'
-import { useStaffs } from '@/features/staff/hooks'
+import { useStaffs, useSyncPending } from '@/features/staff/hooks'
 import { useSortTable } from '@/hooks/use-sort-table'
 import { getComparator } from '@/helpers/table-sorting'
 import type { Staff } from '@/features/staff/types'
@@ -37,6 +39,11 @@ export function StaffList() {
   const { order, orderBy, createSortHandler } = useSortTable('name')
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(10)
+  const { pendingCount, sync } = useSyncPending()
+
+  useEffect(() => {
+    if (pendingCount > 0) sync()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const sorted = staffs?.slice().sort(getComparator(order, orderBy)) ?? []
   const paginated = sorted.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
@@ -114,12 +121,24 @@ export function StaffList() {
                   <TableCell>{row.email}</TableCell>
                   <TableCell>{row.department}</TableCell>
                   <TableCell align="right">
-                    <Chip
-                      label={row.status === 'ACTIVE' ? 'Ativo' : 'Inativo'}
-                      color={row.status === 'ACTIVE' ? 'success' : 'error'}
-                      size="small"
-                      variant="outlined"
-                    />
+                    {row._pendingSync ? (
+                      <Tooltip title="Salvo localmente, aguardando sincronização com o banco de dados">
+                        <Chip
+                          icon={<SyncIcon sx={{ fontSize: 14 }} />}
+                          label="Pendente"
+                          color="warning"
+                          size="small"
+                          variant="outlined"
+                        />
+                      </Tooltip>
+                    ) : (
+                      <Chip
+                        label={row.status === 'ACTIVE' ? 'Ativo' : 'Inativo'}
+                        color={row.status === 'ACTIVE' ? 'success' : 'error'}
+                        size="small"
+                        variant="outlined"
+                      />
+                    )}
                   </TableCell>
                 </TableRow>
               )) : null}

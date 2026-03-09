@@ -33,7 +33,7 @@ export function StaffForm() {
   const [activeStep, setActiveStep] = useState(0)
   const [progress, setProgress] = useState(0)
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [submitSuccess, setSubmitSuccess] = useState(false)
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
 
   const { control, handleSubmit, trigger } = useForm<StaffSchema>({
     mode: 'onChange',
@@ -51,9 +51,12 @@ export function StaffForm() {
   const onSubmit = async (data: StaffSchema) => {
     try {
       setSubmitError(null)
-      await createStaff(data)
-      setSubmitSuccess(true)
-      setTimeout(() => navigate('/staffs'), 1500)
+      const { synced } = await createStaff(data)
+      setSubmitSuccess(synced
+        ? 'Colaborador cadastrado com sucesso! Redirecionando...'
+        : 'Salvo localmente. Será sincronizado com o banco quando a conexão estiver disponível.'
+      )
+      setTimeout(() => navigate('/staffs'), synced ? 1500 : 2500)
     } catch (err) {
       setProgress(50)
       setSubmitError(err instanceof Error ? err.message : 'Erro ao cadastrar colaborador. Tente novamente.')
@@ -212,7 +215,7 @@ export function StaffForm() {
 
       {submitSuccess && (
         <Alert severity="success">
-          Colaborador cadastrado com sucesso! Redirecionando...
+          {submitSuccess}
         </Alert>
       )}
 

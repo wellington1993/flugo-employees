@@ -7,4 +7,7 @@ export type Staff = {
   email: string
   department: StaffDepartments
   status: StaffStatus
+  createdAt?: number
+  _localId?: string
+  _pendingSync?: true
 }

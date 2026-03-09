@@ -6,6 +6,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+firebase-debug.log*
 
 node_modules
 dist
@@ -23,4 +24,11 @@ dist-ssr
 *.sln
 *.sw?
 
+# Environment variables — never commit real credentials
+.env
+.env.local
+.env.production
+
+# Vercel and Firebase
 .vercel
+.firebase/
