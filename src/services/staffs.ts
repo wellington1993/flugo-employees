@@ -1,4 +1,4 @@
-import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore'
+import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc, addDoc } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '@/libs/firebase'
 import { addPendingStaff, getPendingStaffs, removePendingByEmail } from '@/services/local-storage'
 import type { Staff } from '@/features/staff/types'
@@ -8,9 +8,27 @@ const staffsCollection = collection(db, 'staffs')
 
 function withTimeout<T>(promise: Promise<T>, ms = 12000): Promise<T> {
   const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('Não foi possível conectar ao banco de dados.')), ms)
+    setTimeout(() => reject(new Error('Timeout de conexão com o banco de dados.')), ms)
   )
   return Promise.race([promise, timeout])
+}
+
+// Remote logging for production diagnostics
+async function logRemoteError(context: string, error: any) {
+  if (!isFirebaseConfigured) return
+  try {
+    const logRef = collection(db, 'app_logs')
+    await addDoc(logRef, {
+      context,
+      message: error.message || error.code || String(error),
+      code: error.code || 'unknown',
+      userAgent: navigator.userAgent,
+      timestamp: Date.now(),
+      env: import.meta.env.MODE
+    })
+  } catch (e) {
+    console.error('Falha ao gravar log remoto:', e)
+  }
 }
 
 export async function listStaffs(): Promise<Staff[]> {
@@ -25,7 +43,6 @@ export async function listStaffs(): Promise<Staff[]> {
     const snapshot = await withTimeout(getDocs(staffsCollection))
     const fromFirebase = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Staff))
 
-    // doc.id IS the email (used as document key), more reliable than doc.data().email
     const firebaseIds = new Set(snapshot.docs.map(d => d.id))
     const stillPending = pending.filter(s => !firebaseIds.has(s.email))
     if (stillPending.length !== pending.length) {
@@ -40,40 +57,35 @@ export async function listStaffs(): Promise<Staff[]> {
 }
 
 export async function createStaff(data: StaffSchema): Promise<{ synced: boolean; error?: string }> {
+  // Check local redundancy
   const existingLocal = getPendingStaffs().find(s => s.email === data.email)
   if (existingLocal) {
-    throw new Error('E-mail já cadastrado localmente.')
+    throw new Error('E-mail já cadastrado (aguardando sincronização).')
   }
 
-  const localEntry = addPendingStaff(data)
-
   if (!isFirebaseConfigured) {
-    return { synced: false, error: 'Firebase não configurado no ambiente de build.' }
+    const msg = 'Configuração do Firebase ausente no ambiente.'
+    return { synced: false, error: msg }
   }
 
   try {
     const staffDoc = doc(db, 'staffs', data.email)
-    const docSnap = await withTimeout(getDoc(staffDoc))
-
-    if (docSnap.exists()) {
-      throw new Error('E-mail já cadastrado no servidor.')
-    }
-
-    const { _localId, _pendingSync, id: _localIdAlt, ...payload } = localEntry
-    const finalData = { ...payload, createdAt: Date.now() }
+    const finalData = { ...data, createdAt: Date.now() }
     
+    // Tenta gravar no Firebase obrigatoriamente
     await withTimeout(setDoc(staffDoc, finalData))
 
     removePendingByEmail(data.email)
     return { synced: true }
   } catch (err: any) {
-    const errorMsg = err.code || err.message
-    console.error('[Firebase Error]:', errorMsg)
+    const errorMsg = `Erro Firestore (${err.code || 'timeout'}): ${err.message}`
+    console.error('[Firebase Critical Error]:', err)
     
-    if (err instanceof Error && err.message.includes('E-mail já cadastrado')) {
-      removePendingByEmail(data.email)
-      throw err
-    }
+    // Loga o erro no banco para eu ler via CLI
+    await logRemoteError('createStaff', err)
+    
+    // Backup no localstorage, mas retorna erro para UI avisar o usuário
+    addPendingStaff(data) 
     
     return { synced: false, error: errorMsg }
   }
