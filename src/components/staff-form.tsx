@@ -1,0 +1,218 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useForm, Controller } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import {
+  Box,
+  Button,
+  FormControlLabel,
+  LinearProgress,
+  MenuItem,
+  Stack,
+  Step,
+  StepLabel,
+  Stepper,
+  Switch,
+  TextField,
+  Typography,
+} from '@mui/material'
+import CheckIcon from '@mui/icons-material/Check'
+import { staffSchema, departments, type StaffSchema } from '@/features/staff/validation'
+import { useCreateStaff } from '@/features/staff/hooks'
+
+const steps = ['Infos Básicas', 'Infos Profissionais']
+
+const stepFields: Array<Array<keyof StaffSchema>> = [
+  ['name', 'email', 'status'],
+  ['department'],
+]
+
+export function StaffForm() {
+  const navigate = useNavigate()
+  const [activeStep, setActiveStep] = useState(0)
+  const [progress, setProgress] = useState(0)
+
+  const { control, handleSubmit, trigger } = useForm<StaffSchema>({
+    mode: 'onChange',
+    resolver: zodResolver(staffSchema),
+    defaultValues: {
+      name: '',
+      email: '',
+      status: 'ACTIVE',
+      department: 'TI',
+    },
+  })
+
+  const { mutateAsync: createStaff, isPending } = useCreateStaff()
+
+  const onSubmit = async (data: StaffSchema) => {
+    await createStaff(data)
+  }
+
+  const isLastStep = activeStep === steps.length - 1
+
+  const handleNext = async () => {
+    const valid = await trigger(stepFields[activeStep])
+    if (!valid) return
+
+    if (isLastStep) {
+      setProgress(100)
+      handleSubmit(onSubmit)()
+      return
+    }
+
+    setProgress((prev) => prev + 100 / steps.length)
+    setActiveStep((prev) => prev + 1)
+  }
+
+  const handleBack = () => {
+    if (activeStep === 0) {
+      navigate('/staffs')
+      return
+    }
+    setProgress((prev) => prev - 100 / steps.length)
+    setActiveStep((prev) => prev - 1)
+  }
+
+  return (
+    <Box minHeight="50vh" display="flex" flexDirection="column" gap={3}>
+      <Box>
+        <Stack direction="row" alignItems="center" gap={2} mb={0.5}>
+          <LinearProgress
+            variant="determinate"
+            value={progress}
+            sx={{ flex: 1, height: 6, borderRadius: 3 }}
+          />
+          <Typography variant="body2" color="text.secondary" minWidth={36}>
+            {Math.round(progress)}%
+          </Typography>
+        </Stack>
+      </Box>
+
+      <Box display="flex" gap={5}>
+        <Stepper activeStep={activeStep} orientation="vertical" sx={{ minWidth: 180 }}>
+          {steps.map((label, index) => (
+            <Step key={label} completed={activeStep > index}>
+              <StepLabel
+                StepIconComponent={
+                  activeStep > index
+                    ? () => (
+                        <Box
+                          sx={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: '50%',
+                            bgcolor: 'primary.main',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <CheckIcon sx={{ fontSize: 14, color: '#fff' }} />
+                        </Box>
+                      )
+                    : undefined
+                }
+              >
+                {label}
+              </StepLabel>
+            </Step>
+          ))}
+        </Stepper>
+
+        <Box flex={1}>
+          <Typography variant="h6" fontWeight={600} color="text.secondary" mb={3}>
+            {activeStep === 0 ? 'Informações Básicas' : 'Informações Profissionais'}
+          </Typography>
+
+          <form>
+            <Box sx={{ display: activeStep === 0 ? 'flex' : 'none', flexDirection: 'column', gap: 2 }}>
+              <Controller
+                name="name"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <TextField
+                    {...field}
+                    label="Nome"
+                    fullWidth
+                    error={!!fieldState.error}
+                    helperText={fieldState.error?.message}
+                  />
+                )}
+              />
+              <Controller
+                name="email"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <TextField
+                    {...field}
+                    label="E-mail"
+                    type="email"
+                    fullWidth
+                    placeholder="ex: joao@empresa.com"
+                    error={!!fieldState.error}
+                    helperText={fieldState.error?.message}
+                  />
+                )}
+              />
+              <Controller
+                name="status"
+                control={control}
+                render={({ field }) => (
+                  <FormControlLabel
+                    label="Ativar ao criar"
+                    control={
+                      <Switch
+                        {...field}
+                        checked={field.value === 'ACTIVE'}
+                        onChange={(e) => field.onChange(e.target.checked ? 'ACTIVE' : 'INACTIVE')}
+                      />
+                    }
+                  />
+                )}
+              />
+            </Box>
+
+            <Box sx={{ display: activeStep === 1 ? 'block' : 'none' }}>
+              <Controller
+                name="department"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <TextField
+                    {...field}
+                    select
+                    label="Departamento"
+                    fullWidth
+                    error={!!fieldState.error}
+                    helperText={fieldState.error?.message}
+                  >
+                    {departments.map((dep) => (
+                      <MenuItem key={dep} value={dep}>
+                        {dep}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                )}
+              />
+            </Box>
+          </form>
+        </Box>
+      </Box>
+
+      <Stack direction="row" justifyContent="space-between" mt="auto" pt={2}>
+        <Button onClick={handleBack} sx={{ color: 'text.secondary' }}>
+          Voltar
+        </Button>
+        <Button
+          variant="contained"
+          onClick={handleNext}
+          disabled={isPending}
+        >
+          {isLastStep ? 'Concluir' : 'Próximo'}
+        </Button>
+      </Stack>
+    </Box>
+  )
+}
+
+export default StaffForm
