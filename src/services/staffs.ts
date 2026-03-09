@@ -25,8 +25,9 @@ export async function listStaffs(): Promise<Staff[]> {
     const snapshot = await withTimeout(getDocs(staffsCollection))
     const fromFirebase = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Staff))
 
-    const firebaseEmails = new Set(fromFirebase.map(s => s.email))
-    const stillPending = pending.filter(s => !firebaseEmails.has(s.email))
+    // doc.id IS the email (used as document key), more reliable than doc.data().email
+    const firebaseIds = new Set(snapshot.docs.map(d => d.id))
+    const stillPending = pending.filter(s => !firebaseIds.has(s.email))
     if (stillPending.length !== pending.length) {
       localStorage.setItem('flugo_pending_staffs', JSON.stringify(stillPending))
     }
