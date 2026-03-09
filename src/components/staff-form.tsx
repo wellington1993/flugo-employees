@@ -71,14 +71,9 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
         await updateStaff({ id: staffId, data })
         setSubmitSuccess('Colaborador atualizado com sucesso! Redirecionando...')
       } else {
-        const { synced, error } = await createStaff(data)
+        await createStaff(data)
         if (draftKey) localStorage.removeItem(draftKey)
-        
-        if (synced) {
-          setSubmitSuccess('Colaborador cadastrado com sucesso! Redirecionando...')
-        } else {
-          setSubmitSuccess(`Salvo localmente (offline). Motivo: ${error || 'Erro de conexão'}`)
-        }
+        setSubmitSuccess('Colaborador cadastrado com sucesso! Redirecionando...')
       }
       setTimeout(() => navigate('/staffs'), 2000)
     } catch (err) {

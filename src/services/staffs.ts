@@ -1,6 +1,6 @@
 import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc, addDoc } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '@/libs/firebase'
-import { addPendingStaff, getPendingStaffs, removePendingByEmail } from '@/services/local-storage'
+import { getPendingStaffs, removePendingByEmail } from '@/services/local-storage'
 import type { Staff } from '@/features/staff/types'
 import type { StaffSchema } from '@/features/staff/validation'
 
@@ -56,38 +56,24 @@ export async function listStaffs(): Promise<Staff[]> {
   }
 }
 
-export async function createStaff(data: StaffSchema): Promise<{ synced: boolean; error?: string }> {
-  // Check local redundancy
+export async function createStaff(data: StaffSchema): Promise<void> {
   const existingLocal = getPendingStaffs().find(s => s.email === data.email)
   if (existingLocal) {
     throw new Error('E-mail já cadastrado (aguardando sincronização).')
   }
 
   if (!isFirebaseConfigured) {
-    const msg = 'Configuração do Firebase ausente no ambiente.'
-    return { synced: false, error: msg }
+    throw new Error('Configuração do Firebase ausente no ambiente de produção.')
   }
 
   try {
     const staffDoc = doc(db, 'staffs', data.email)
-    const finalData = { ...data, createdAt: Date.now() }
-    
-    // Tenta gravar no Firebase obrigatoriamente
-    await withTimeout(setDoc(staffDoc, finalData))
-
-    removePendingByEmail(data.email)
-    return { synced: true }
+    await withTimeout(setDoc(staffDoc, { ...data, createdAt: Date.now() }))
   } catch (err: any) {
-    const errorMsg = `Erro Firestore (${err.code || 'timeout'}): ${err.message}`
-    console.error('[Firebase Critical Error]:', err)
-    
-    // Loga o erro no banco para eu ler via CLI
+    const errorMsg = `Erro ao salvar (${err.code ?? 'timeout'}): ${err.message}`
+    console.error('[Firebase]', err)
     await logRemoteError('createStaff', err)
-    
-    // Backup no localstorage, mas retorna erro para UI avisar o usuário
-    addPendingStaff(data) 
-    
-    return { synced: false, error: errorMsg }
+    throw new Error(errorMsg)
   }
 }
 
