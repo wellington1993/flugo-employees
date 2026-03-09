@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app'
+import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore'
 
 const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID
@@ -18,7 +18,8 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
-const app = initializeApp(firebaseConfig)
+// Inicialização resiliente para evitar instâncias duplicadas
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
 
 // Ativando persistência nativa para performance instantânea (Offline First)
 export const db = initializeFirestore(app, {
