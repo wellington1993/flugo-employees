@@ -1,59 +1,61 @@
-# Flugo Employees
+# Flugo Staff Manager
 
-Painel de colaboradores — desafio técnico Flugo.
+Gerenciador de colaboradores desenvolvido com foco em performance, UX resiliente e suporte offline.
 
-**Deploy:** https://flugo-employees-theta.vercel.app
+A aplicação utiliza um formulário multi-etapa com persistência de rascunho e sincronização automática com o Firebase Firestore.
 
-## Rodando localmente
+## 🚀 Demo
+Produção na Vercel: [https://flugo-employees-theta.vercel.app](https://flugo-employees-theta.vercel.app)
 
-```bash
-git clone https://github.com/wellington1993/flugo-employees.git
-cd flugo-employees
-npm install
-```
+---
 
-Crie um `.env` na raiz (tem um `.env.example` como base):
+## 🛠 Tech Stack
+- **Framework:** React 19 + TypeScript + Vite
+- **UI:** Material UI v7 + Emotion
+- **State & Data:** TanStack Query (React Query) v5
+- **Forms:** React Hook Form + Zod
+- **Backend:** Firebase Firestore
+- **Roteamento:** React Router v7
 
-```
-VITE_FIREBASE_API_KEY=
-VITE_FIREBASE_AUTH_DOMAIN=
-VITE_FIREBASE_PROJECT_ID=
-VITE_FIREBASE_STORAGE_BUCKET=
-VITE_FIREBASE_MESSAGING_SENDER_ID=
-VITE_FIREBASE_APP_ID=
-```
+## ✨ Diferenciais Técnicos
+- **Optimistic Updates:** Feedback instantâneo na UI ao cadastrar, sem esperar resposta do servidor.
+- **Offline-First:** Persistência nativa do Firestore (IndexedDB) + Fallback em LocalStorage para garantir que dados nunca se percam.
+- **Draft Persistence:** Rascunho automático do formulário no LocalStorage (evita perda de dados ao atualizar a página).
+- **Skeleton Loading:** Transições fluidas e sem saltos de layout durante o carregamento inicial.
 
-```bash
-npm run dev
-# http://localhost:5173
-```
+---
 
-## Firebase
+## 📦 Como Rodar
 
-Precisa de um projeto com Firestore no modo de teste. Para publicar as regras do `firestore.rules`:
+### Localmente
+1. Instale as dependências: `npm install`
+2. Configure o `.env` (baseie-se no `.env.example`)
+3. Inicie o dev: `npm run dev` (disponível em `http://localhost:5173`)
 
-```bash
-npx firebase-tools deploy --only firestore:rules --project SEU_PROJECT_ID
-```
-
-## Docker
-
+### Com Docker
 ```bash
 docker compose up --build
-# http://localhost:3000
 ```
+Disponível em `http://localhost:3000`.
 
-Build manual passando as variáveis como build args:
+---
 
+## 🧪 Testes
+O projeto conta com uma suíte de testes robusta:
+- **Unitários (Vitest):** Lógica de negócio, validações e hooks.
+  - `npm run test`
+- **E2E (Playwright):** Fluxo real de usuário e integração.
+  - `npm run test:e2e`
+
+---
+
+## ⚙️ Configuração do Firebase
+1. Crie um projeto no Firebase Console.
+2. Ative o **Firestore Database** em modo de teste.
+3. Obtenha as chaves web e configure no seu `.env`.
+
+### Regras do Firestore
+As regras estão no arquivo `firestore.rules`. Para deploy:
 ```bash
-docker build \
-  --build-arg VITE_FIREBASE_API_KEY=... \
-  --build-arg VITE_FIREBASE_PROJECT_ID=... \
-  -t flugo-employees .
-
-docker run -p 3000:80 flugo-employees
+npx firebase-tools deploy --only firestore:rules --project SEU_ID
 ```
-
-## Stack
-
-React 19 · TypeScript · Vite · MUI v7 · React Hook Form + Zod · TanStack Query · Firebase Firestore · React Router v7

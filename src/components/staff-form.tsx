@@ -47,7 +47,7 @@ export function StaffForm() {
     },
   })
 
-  // Watch fields and save to draft
+  // Persistence for form draft
   const formValues = watch()
   useEffect(() => {
     localStorage.setItem('staff_form_draft', JSON.stringify(formValues))
@@ -59,10 +59,10 @@ export function StaffForm() {
     try {
       setSubmitError(null)
       const { synced } = await createStaff(data)
-      localStorage.removeItem('staff_form_draft') // Clear draft on success
+      localStorage.removeItem('staff_form_draft') 
       setSubmitSuccess(synced
         ? 'Colaborador cadastrado com sucesso! Redirecionando...'
-        : 'Salvo localmente. Será sincronizado com o banco quando a conexão estiver disponível.'
+        : 'Salvo localmente (offline). Sincronização pendente.'
       )
       setTimeout(() => navigate('/staffs'), synced ? 1500 : 2500)
     } catch (err) {

@@ -41,13 +41,12 @@ export async function listStaffs(): Promise<Staff[]> {
 export async function createStaff(data: StaffSchema): Promise<{ synced: boolean }> {
   const existingLocal = getPendingStaffs().find(s => s.email === data.email)
   if (existingLocal) {
-    throw new Error('Já existe um colaborador cadastrado com esse e-mail (local).')
+    throw new Error('E-mail já cadastrado localmente.')
   }
 
   const localEntry = addPendingStaff(data)
 
   if (!isFirebaseConfigured) {
-    console.warn('Firebase não configurado (VITE_FIREBASE_PROJECT_ID ausente).')
     return { synced: false }
   }
 
@@ -56,12 +55,12 @@ export async function createStaff(data: StaffSchema): Promise<{ synced: boolean 
     const docSnap = await withTimeout(getDoc(staffDoc))
 
     if (docSnap.exists()) {
-      throw new Error('Já existe um colaborador cadastrado com esse e-mail no servidor.')
+      throw new Error('E-mail já cadastrado no servidor.')
     }
 
     const { _localId, _pendingSync, id: _localIdAlt, ...payload } = localEntry
     
-    // O payload PRECISA incluir createdAt para passar nas regras do Firestore
+    // createdAt is required by Firestore rules
     const finalData = { ...payload, createdAt: Date.now() }
     
     await withTimeout(setDoc(staffDoc, finalData))
@@ -69,9 +68,9 @@ export async function createStaff(data: StaffSchema): Promise<{ synced: boolean 
     removePendingByEmail(data.email)
     return { synced: true }
   } catch (err: any) {
-    console.error('Falha técnica no Firebase:', err.code || err.message, err)
+    console.error('[Firebase Error]:', err.code || err.message)
     
-    if (err instanceof Error && err.message.includes('e-mail')) {
+    if (err instanceof Error && err.message.includes('E-mail já cadastrado')) {
       removePendingByEmail(data.email)
       throw err
     }
