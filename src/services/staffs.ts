@@ -89,13 +89,14 @@ export async function pushStaffToFirebase(staff: Staff): Promise<boolean> {
       return true
     }
 
-    const { _localId, _pendingSync, id, ...payload } = staff
+    const { _localId: _, _pendingSync: __, id: ___, ...payload } = staff
     await withTimeout(setDoc(staffDoc, { ...payload, createdAt: staff.createdAt || Date.now() }))
 
     removePendingByEmail(staff.email)
     return true
-  } catch (err: any) {
-    console.error('Erro na sincronização de fundo:', err.code || err.message)
+  } catch (err: unknown) {
+    const error = err as { code?: string; message?: string }
+    console.error('Erro na sincronização de fundo:', error.code || error.message)
     return false
   }
 }
