@@ -60,7 +60,7 @@ export async function createStaff(data: StaffSchema): Promise<{ synced: boolean 
     }
 
     const { _localId, _pendingSync, id: _localIdAlt, ...payload } = localEntry
-    await withTimeout(setDoc(staffDoc, { ...payload, createdAt: Date.now() }))
+    await withTimeout(setDoc(staffDoc, payload))
 
     removePendingByEmail(data.email)
     return { synced: true }
@@ -91,11 +91,12 @@ export async function pushStaffToFirebase(staff: Staff): Promise<boolean> {
     }
 
     const { _localId, _pendingSync, id, ...payload } = staff
-    await withTimeout(setDoc(staffDoc, { ...payload, createdAt: Date.now() }))
+    await withTimeout(setDoc(staffDoc, payload))
 
     removePendingByEmail(staff.email)
     return true
-  } catch {
+  } catch (err) {
+    console.error('Erro no push automático:', err)
     return false
   }
 }
