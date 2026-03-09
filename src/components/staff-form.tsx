@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -43,6 +43,7 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
 
   const draftKey = isEdit ? null : 'staff_form_draft'
+  const submittedRef = useRef(false)
 
   const { control, handleSubmit, trigger, watch } = useForm<StaffSchema>({
     mode: 'onChange',
@@ -57,7 +58,7 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
 
   const formValues = watch()
   useEffect(() => {
-    if (draftKey) localStorage.setItem(draftKey, JSON.stringify(formValues))
+    if (draftKey && !submittedRef.current) localStorage.setItem(draftKey, JSON.stringify(formValues))
   }, [formValues, draftKey])
 
   const { mutateAsync: createStaff, isPending: isCreating } = useCreateStaff()
@@ -72,6 +73,7 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
         setSubmitSuccess('Colaborador atualizado com sucesso! Redirecionando...')
       } else {
         await createStaff(data)
+        submittedRef.current = true
         if (draftKey) localStorage.removeItem(draftKey)
         setSubmitSuccess('Colaborador cadastrado com sucesso! Redirecionando...')
       }

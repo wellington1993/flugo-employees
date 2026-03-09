@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   Chip,
+  InputAdornment,
   MenuItem,
   Paper,
   Stack,
@@ -96,7 +97,7 @@ export function StaffList() {
         </Button>
       </Stack>
 
-      {/* Filters hidden to align with original challenge scope */}
+      {/* Filters hidden */}
       <Box sx={{ display: 'none' }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} gap={2} mb={2}>
           <TextField
@@ -231,7 +232,7 @@ export function StaffList() {
                     />
                   )}
                 </TableCell>
-                {/* Edit/Delete actions hidden to align with original scope */}
+                {/* Edit/Delete hidden */}
                 {/* <TableCell align="right">
                   {!row._pendingSync && (
                     <Stack direction="row" justifyContent="flex-end" gap={0.5}>

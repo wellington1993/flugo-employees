@@ -50,26 +50,20 @@ export async function listStaffs(): Promise<Staff[]> {
   }
 }
 
-export async function createStaff(data: StaffSchema): Promise<{ synced: boolean; error?: string }> {
+export async function createStaff(data: StaffSchema): Promise<void> {
   if (!isFirebaseConfigured) {
     addPendingStaff(data)
-    return { synced: false, error: 'Firebase offline' }
+    return
   }
 
   try {
     const staffDoc = doc(db, 'staffs', data.email)
     await withTimeout(setDoc(staffDoc, { ...data, createdAt: Date.now() }))
-    
     removePendingByEmail(data.email)
-    return { synced: true }
   } catch (err: any) {
-    console.error('Sync failed', err)
-    
-    // Fallback redundancy
+    console.error('[Firebase] createStaff:', err)
     addPendingStaff(data)
-    
-    await logRemoteError('createStaff', err)
-    return { synced: false, error: err.code || err.message }
+    logRemoteError('createStaff', err).catch(() => {})
   }
 }
 
