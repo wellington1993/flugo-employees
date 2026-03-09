@@ -5,10 +5,10 @@ export const departments: StaffDepartments[] = ['Design', 'TI', 'Marketing', 'Pr
 const statuses: StaffStatus[] = ['ACTIVE', 'INACTIVE']
 
 export const staffSchema = z.object({
-  name: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres').max(100),
+  name: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres').max(100, 'Nome muito longo'),
   email: z.string().email('E-mail inválido'),
-  department: z.enum(departments as [StaffDepartments, ...StaffDepartments[]]),
-  status: z.enum(statuses as [StaffStatus, ...StaffStatus[]]),
+  department: z.enum(departments as [StaffDepartments, ...StaffDepartments[]], { error: 'Selecione um departamento' }),
+  status: z.enum(statuses as [StaffStatus, ...StaffStatus[]], { error: 'Status inválido' }),
 })
 
 export type StaffSchema = z.infer<typeof staffSchema>

@@ -20,7 +20,7 @@ import {
 import CheckIcon from '@mui/icons-material/Check'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { staffSchema, departments, type StaffSchema } from '@/features/staff/validation'
-import { useCreateStaff, useUpdateStaff } from '@/features/staff/hooks'
+import { useCreateStaff, useUpdateStaff, useStaffs } from '@/features/staff/hooks'
 
 const steps = ['Infos Básicas', 'Infos Profissionais']
 
@@ -63,6 +63,7 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
 
   const { mutateAsync: createStaff, isPending: isCreating } = useCreateStaff()
   const { mutateAsync: updateStaff, isPending: isUpdating } = useUpdateStaff()
+  const { data: existingStaffs } = useStaffs()
   const isPending = isCreating || isUpdating
 
   const onSubmit = async (data: StaffSchema) => {
@@ -178,6 +179,13 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
               <Controller
                 name="email"
                 control={control}
+                rules={{
+                  validate: (value) => {
+                    if (isEdit) return true
+                    const duplicate = existingStaffs?.some(s => s.email === value)
+                    return duplicate ? 'E-mail já cadastrado' : true
+                  },
+                }}
                 render={({ field, fieldState }) => (
                   <TextField
                     {...field}
