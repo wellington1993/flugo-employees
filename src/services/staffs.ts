@@ -86,7 +86,8 @@ export async function pushStaffToFirebase(staff: Staff): Promise<boolean> {
       return true
     }
 
-    const { _localId: _l, _pendingSync: _p, id: _i, ...payload } = staff
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { _localId, _pendingSync, id, ...payload } = staff
     await withTimeout(setDoc(staffDoc, { ...payload, createdAt: staff.createdAt || Date.now() }))
 
     removePendingByEmail(staff.email)

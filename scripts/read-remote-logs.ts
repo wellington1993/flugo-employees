@@ -32,8 +32,9 @@ async function readRemoteLogs() {
       console.log(`[${new Date(data.timestamp).toLocaleString()}] ${data.context}: ${data.message}`)
       console.log(`UA: ${data.userAgent}\n`)
     })
-  } catch (err: any) {
-    console.error('Falha ao ler logs:', err.message)
+  } catch (err: unknown) {
+    const error = err as { message?: string }
+    console.error('Falha ao ler logs:', error.message)
   }
 }
 
