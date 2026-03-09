@@ -8,8 +8,10 @@ O formulário de cadastro é dividido em duas etapas — informações básicas 
 
 | Ambiente | URL |
 |---|---|
-| Vercel (produção) | https://flugo-employees-theta.vercel.app |
-| GitHub Pages | https://wellington1993.github.io/flugo-employees/ |
+| Vercel (produção) | [https://flugo-employees-theta.vercel.app](https://flugo-employees-theta.vercel.app) |
+| GitHub Pages | [https://wellington1993.github.io/flugo-employees/](https://wellington1993.github.io/flugo-employees/) |
+
+**Importante:** Na Vercel, certifique-se de configurar as mesmas Variáveis de Ambiente (`VITE_FIREBASE_*`) utilizadas no GitHub Secrets.
 
 ## Pré-requisitos
 
