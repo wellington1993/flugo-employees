@@ -34,9 +34,9 @@ test('Forjar cadastro em produção e capturar erros reais', async ({ page }) =>
   const finalMessage = await alert.innerText()
   console.log(`RESULTADO NA TELA: ${finalMessage}`)
 
-  if (finalMessage.includes('Erro Firestore') || finalMessage.includes('offline')) {
-    console.error('PROVA TÉCNICA: O Firebase falhou em produção.')
-  } else {
+  if (finalMessage.includes('sucesso')) {
     console.log('PROVA TÉCNICA: Sincronização funcionou com sucesso!')
+  } else {
+    console.error('PROVA TÉCNICA: Firebase falhou em produção. Mensagem:', finalMessage)
   }
 })
