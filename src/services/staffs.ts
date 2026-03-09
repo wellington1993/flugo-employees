@@ -1,14 +1,14 @@
 import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc, addDoc } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '@/libs/firebase'
-import { getPendingStaffs, removePendingByEmail } from '@/services/local-storage'
+import { addPendingStaff, getPendingStaffs, removePendingByEmail } from '@/services/local-storage'
 import type { Staff } from '@/features/staff/types'
 import type { StaffSchema } from '@/features/staff/validation'
 
 const staffsCollection = collection(db, 'staffs')
 
-function withTimeout<T>(promise: Promise<T>, ms = 12000): Promise<T> {
+function withTimeout<T>(promise: Promise<T>, ms = 30000): Promise<T> {
   const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('Timeout de conexão com o banco de dados.')), ms)
+    setTimeout(() => reject(new Error('O banco de dados demorou muito para responder (Timeout).')), ms)
   )
   return Promise.race([promise, timeout])
 }
@@ -57,21 +57,25 @@ export async function listStaffs(): Promise<Staff[]> {
 }
 
 export async function createStaff(data: StaffSchema): Promise<void> {
-  const existingLocal = getPendingStaffs().find(s => s.email === data.email)
-  if (existingLocal) {
-    throw new Error('E-mail já cadastrado (aguardando sincronização).')
-  }
-
   if (!isFirebaseConfigured) {
     throw new Error('Configuração do Firebase ausente no ambiente de produção.')
   }
 
   try {
     const staffDoc = doc(db, 'staffs', data.email)
+    
+    // Tentativa direta no Firebase (Timeout aumentado para 30s)
     await withTimeout(setDoc(staffDoc, { ...data, createdAt: Date.now() }))
+
+    // Limpa do cache local se existir (sucesso real)
+    removePendingByEmail(data.email)
   } catch (err: any) {
-    const errorMsg = `Erro ao salvar (${err.code ?? 'timeout'}): ${err.message}`
+    const errorMsg = `Falha no Banco: ${err.code || 'Timeout'} - ${err.message}`
     console.error('[Firebase]', err)
+    
+    // Backup de segurança no LocalStorage
+    addPendingStaff(data)
+    
     await logRemoteError('createStaff', err)
     throw new Error(errorMsg)
   }
