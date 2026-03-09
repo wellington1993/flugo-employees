@@ -17,6 +17,7 @@ export async function listStaffs(): Promise<Staff[]> {
   const pending = getPendingStaffs()
 
   if (!isFirebaseConfigured) {
+    console.warn('Firebase não configurado. Usando apenas dados locais.')
     return pending
   }
 
@@ -31,24 +32,26 @@ export async function listStaffs(): Promise<Staff[]> {
     }
 
     return [...fromFirebase, ...stillPending]
-  } catch {
+  } catch (err) {
+    console.error('Erro ao listar do Firebase:', err)
     return pending
   }
 }
 
 export async function createStaff(data: StaffSchema): Promise<{ synced: boolean }> {
-  // Check local storage first
   const existingLocal = getPendingStaffs().find(s => s.email === data.email)
   if (existingLocal) {
-    throw new Error('Já existe um colaborador cadastrado com esse e-mail.')
+    throw new Error('Já existe um colaborador cadastrado com esse e-mail (local).')
   }
 
   const localEntry = addPendingStaff(data)
 
-  if (!isFirebaseConfigured) return { synced: false }
+  if (!isFirebaseConfigured) {
+    console.warn('Firebase não configurado. Salvo apenas localmente.')
+    return { synced: false }
+  }
 
   try {
-    // We use email as Doc ID to ensure uniqueness without extra getDocs queries
     const staffDoc = doc(db, 'staffs', data.email)
     const docSnap = await withTimeout(getDoc(staffDoc))
 
@@ -57,17 +60,21 @@ export async function createStaff(data: StaffSchema): Promise<{ synced: boolean 
     }
 
     const { _localId, _pendingSync, ...payload } = localEntry
-    // Removendo createdAt temporariamente para validar regras de segurança do console
+    // Tentativa de gravação direta
     await withTimeout(setDoc(staffDoc, payload))
 
     removePendingByEmail(data.email)
     return { synced: true }
   } catch (err) {
-    console.error('Firebase Error:', err)
+    console.error('Falha na sincronização com Firebase:', err)
+    
+    // Se o erro for de duplicidade, não mantemos no localstorage para evitar confusão
     if (err instanceof Error && err.message.includes('e-mail')) {
       removePendingByEmail(data.email)
       throw err
     }
+    
+    // Para outros erros (permissão/rede), mantemos como Pendente
     return { synced: false }
   }
 }
