@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom'
-import { Box } from '@mui/material'
+import { Box, Container } from '@mui/material'
 import { Sidebar } from '@/components/sidebar'
 import { Header } from '@/components/header'
 import { Breadcrumb } from '@/components/breadcrumb'
@@ -11,8 +11,10 @@ function App() {
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <Header />
         <Box component="main" sx={{ flex: 1, p: { xs: 3, md: 5 } }}>
-          <Breadcrumb />
-          <Outlet />
+          <Container maxWidth="md" disableGutters>
+            <Breadcrumb />
+            <Outlet />
+          </Container>
         </Box>
       </Box>
     </Box>
