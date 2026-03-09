@@ -15,18 +15,15 @@ export function useCreateStaff() {
   return useMutation({
     mutationFn: (data: StaffSchema) => createStaff(data),
     onMutate: async (newStaff) => {
-      // Cancelar refetches em andamento para não sobrescrever o update otimista
       await queryClient.cancelQueries({ queryKey: ['staffs'] })
 
-      // Snapshot do valor anterior para rollback em caso de erro
       const previousStaffs = queryClient.getQueryData(['staffs'])
 
-      // Update otimista do cache
       queryClient.setQueryData(['staffs'], (old: any) => {
         const optimisticEntry = {
           id: `temp-${Date.now()}`,
           ...newStaff,
-          _pendingSync: true, // Mostra como pendente até confirmar
+          _pendingSync: true,
         }
         return old ? [optimisticEntry, ...old] : [optimisticEntry]
       })
@@ -34,11 +31,9 @@ export function useCreateStaff() {
       return { previousStaffs }
     },
     onError: (_err, _newStaff, context) => {
-      // Rollback para o estado anterior em caso de falha
       queryClient.setQueryData(['staffs'], context?.previousStaffs)
     },
     onSettled: () => {
-      // Sincronizar com o servidor no final (sucesso ou erro)
       queryClient.invalidateQueries({ queryKey: ['staffs'] })
     },
   })

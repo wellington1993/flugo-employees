@@ -18,10 +18,8 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
-// Inicialização resiliente para evitar instâncias duplicadas
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
 
-// Ativando persistência nativa para performance instantânea (Offline First)
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({
     tabManager: persistentMultipleTabManager()

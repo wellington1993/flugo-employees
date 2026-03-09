@@ -1,122 +1,59 @@
 # Flugo Employees
 
-Aplicação de cadastro e listagem de colaboradores desenvolvida como parte do desafio técnico da Flugo.
+Painel de colaboradores — desafio técnico Flugo.
 
-O formulário de cadastro é dividido em duas etapas — informações básicas e informações profissionais — com validação por etapa e barra de progresso. Os dados são persistidos no Firebase Firestore. Quando o Firebase não está disponível, os dados são salvos localmente no navegador e sincronizados automaticamente assim que a conexão for restabelecida.
+**Deploy:** https://flugo-employees-theta.vercel.app
 
-## Acesso
+## Rodando localmente
 
-A aplicação está disponível em produção na Vercel:
-
-[https://flugo-employees-theta.vercel.app](https://flugo-employees-theta.vercel.app)
-
-**Importante:** Na Vercel, certifique-se de configurar as mesmas Variáveis de Ambiente (`VITE_FIREBASE_*`) utilizadas localmente.
-
-## Pré-requisitos
-
-- Node.js 22 ou superior
-- npm
-
-## Como rodar localmente
-
-1. Clone o repositório:
-
-```
+```bash
 git clone https://github.com/wellington1993/flugo-employees.git
 cd flugo-employees
-```
-
-2. Instale as dependências:
-
-```
 npm install
 ```
 
-3. Crie um arquivo `.env` na raiz do projeto com as credenciais do Firebase (veja a seção abaixo).
-
-4. Inicie o servidor de desenvolvimento:
+Crie um `.env` na raiz (tem um `.env.example` como base):
 
 ```
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+```
+
+```bash
 npm run dev
+# http://localhost:5173
 ```
 
-A aplicação estará disponível em `http://localhost:5173`.
+## Firebase
 
-## Configuração do Firebase
+Precisa de um projeto com Firestore no modo de teste. Para publicar as regras do `firestore.rules`:
 
-1. Acesse o [console do Firebase](https://console.firebase.google.com) e crie um novo projeto.
-
-2. No menu lateral, vá em **Firestore Database** e clique em **Criar banco de dados**. Durante o desenvolvimento, selecione **modo de teste** para liberar leitura e escrita sem autenticação.
-
-3. Ainda no console, vá em **Configurações do projeto** (ícone de engrenagem) e em **Seus apps**, clique em **Adicionar app** e escolha a opção Web.
-
-4. Copie as credenciais geradas e crie o arquivo `.env` na raiz do projeto:
-
-```
-VITE_FIREBASE_API_KEY=sua_api_key
-VITE_FIREBASE_AUTH_DOMAIN=seu_auth_domain
-VITE_FIREBASE_PROJECT_ID=seu_project_id
-VITE_FIREBASE_STORAGE_BUCKET=seu_storage_bucket
-VITE_FIREBASE_MESSAGING_SENDER_ID=seu_sender_id
-VITE_FIREBASE_APP_ID=seu_app_id
-```
-
-Há um arquivo `.env.example` na raiz como referência.
-
-### Regras do Firestore
-
-O arquivo `firestore.rules` na raiz do projeto define as regras de segurança. Para fazer o deploy das regras:
-
-```
+```bash
 npx firebase-tools deploy --only firestore:rules --project SEU_PROJECT_ID
 ```
 
-## Como rodar com Docker
+## Docker
 
-Certifique-se de ter o [Docker](https://docs.docker.com/get-docker/) instalado.
-
-### Com docker-compose (recomendado)
-
-1. Crie o arquivo `.env` com as credenciais do Firebase (igual ao passo acima).
-
-2. Suba o container:
-
-```
+```bash
 docker compose up --build
+# http://localhost:3000
 ```
 
-A aplicação estará disponível em `http://localhost:3000`.
+Build manual passando as variáveis como build args:
 
-### Build manual
-
-```
+```bash
 docker build \
-  --build-arg VITE_FIREBASE_API_KEY=sua_api_key \
-  --build-arg VITE_FIREBASE_AUTH_DOMAIN=seu_auth_domain \
-  --build-arg VITE_FIREBASE_PROJECT_ID=seu_project_id \
-  --build-arg VITE_FIREBASE_STORAGE_BUCKET=seu_storage_bucket \
-  --build-arg VITE_FIREBASE_MESSAGING_SENDER_ID=seu_sender_id \
-  --build-arg VITE_FIREBASE_APP_ID=seu_app_id \
+  --build-arg VITE_FIREBASE_API_KEY=... \
+  --build-arg VITE_FIREBASE_PROJECT_ID=... \
   -t flugo-employees .
 
 docker run -p 3000:80 flugo-employees
 ```
 
-## Scripts disponíveis
+## Stack
 
-```
-npm run dev      # inicia o servidor de desenvolvimento
-npm run build    # gera o build de produção
-npm run preview  # pré-visualiza o build localmente
-npm run lint     # verifica o código com ESLint
-```
-
-## Tecnologias
-
-- React 19 + TypeScript
-- Vite
-- Material UI v7
-- React Hook Form + Zod
-- TanStack Query
-- Firebase Firestore
-- React Router v7
+React 19 · TypeScript · Vite · MUI v7 · React Hook Form + Zod · TanStack Query · Firebase Firestore · React Router v7
