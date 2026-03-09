@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Avatar,
   Box,
@@ -11,6 +12,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   TableSortLabel,
   Typography,
@@ -33,6 +35,11 @@ const columns: { id: keyof Staff; label: string; align?: TableCellProps['align']
 export function StaffList() {
   const { data: staffs, isLoading, isError } = useStaffs()
   const { order, orderBy, createSortHandler } = useSortTable('name')
+  const [page, setPage] = useState(0)
+  const [rowsPerPage, setRowsPerPage] = useState(10)
+
+  const sorted = staffs?.slice().sort(getComparator(order, orderBy)) ?? []
+  const paginated = sorted.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
 
   return (
     <Box>
@@ -89,10 +96,7 @@ export function StaffList() {
                 </TableCell>
               </TableRow>
             )}
-            {staffs
-              ?.slice()
-              .sort(getComparator(order, orderBy))
-              .map((row) => (
+            {staffs?.length ? paginated.map((row) => (
                 <TableRow key={row.id} hover>
                   <TableCell>
                     <Stack direction="row" alignItems="center" gap={1.5}>
@@ -118,9 +122,20 @@ export function StaffList() {
                     />
                   </TableCell>
                 </TableRow>
-              ))}
+              )) : null}
           </TableBody>
         </Table>
+        <TablePagination
+          component="div"
+          count={sorted.length}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onPageChange={(_, newPage) => setPage(newPage)}
+          onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0) }}
+          rowsPerPageOptions={[5, 10, 25]}
+          labelRowsPerPage="Por página:"
+          labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
+        />
       </TableContainer>
     </Box>
   )
