@@ -33,3 +33,6 @@ dist-ssr
 .vercel
 .firebase/
 .env*.local
+
+# Local documentation drafts
+docs/
