@@ -10,14 +10,20 @@ function shortId() {
 export function getPendingStaffs(): Staff[] {
   try {
     const raw = localStorage.getItem(LS_KEY)
-    return raw ? JSON.parse(raw) : []
+    const all: Staff[] = raw ? JSON.parse(raw) : []
+    const seen = new Set<string>()
+    return all.filter(s => {
+      if (seen.has(s.email)) return false
+      seen.add(s.email)
+      return true
+    })
   } catch {
     return []
   }
 }
 
 export function addPendingStaff(data: StaffSchema): Staff {
-  const pending = getPendingStaffs()
+  const pending = getPendingStaffs().filter(s => s.email !== data.email)
   const staff: Staff = {
     ...data,
     id: `local_${shortId()}`,
