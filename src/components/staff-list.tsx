@@ -17,6 +17,7 @@ import {
   TableSortLabel,
   Tooltip,
   Typography,
+  Skeleton,
   type TableCellProps,
 } from '@mui/material'
 import SyncIcon from '@mui/icons-material/Sync'
@@ -83,13 +84,20 @@ export function StaffList() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {isLoading && (
-              <TableRow>
-                <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
-                  <CircularProgress size={20} />
-                </TableCell>
-              </TableRow>
-            )}
+            {isLoading &&
+              Array.from(new Array(5)).map((_, index) => (
+                <TableRow key={index}>
+                  <TableCell>
+                    <Stack direction="row" alignItems="center" gap={1.5}>
+                      <Skeleton variant="circular" width={36} height={36} />
+                      <Skeleton variant="text" width={120} />
+                    </Stack>
+                  </TableCell>
+                  <TableCell><Skeleton variant="text" width={180} /></TableCell>
+                  <TableCell><Skeleton variant="text" width={100} /></TableCell>
+                  <TableCell align="right"><Skeleton variant="rounded" width={80} height={24} /></TableCell>
+                </TableRow>
+              ))}
             {isError && (
               <TableRow>
                 <TableCell colSpan={4} align="center" sx={{ py: 4, color: 'error.main' }}>
