@@ -36,10 +36,10 @@ export function StaffForm() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
 
-  const { control, handleSubmit, trigger } = useForm<StaffSchema>({
+  const { control, handleSubmit, trigger, watch, reset } = useForm<StaffSchema>({
     mode: 'onChange',
     resolver: zodResolver(staffSchema),
-    defaultValues: {
+    defaultValues: JSON.parse(localStorage.getItem('staff_form_draft') || '{}') || {
       name: '',
       email: '',
       status: 'ACTIVE',
@@ -47,12 +47,19 @@ export function StaffForm() {
     },
   })
 
+  // Watch fields and save to draft
+  const formValues = watch()
+  useEffect(() => {
+    localStorage.setItem('staff_form_draft', JSON.stringify(formValues))
+  }, [formValues])
+
   const { mutateAsync: createStaff, isPending } = useCreateStaff()
 
   const onSubmit = async (data: StaffSchema) => {
     try {
       setSubmitError(null)
       const { synced } = await createStaff(data)
+      localStorage.removeItem('staff_form_draft') // Clear draft on success
       setSubmitSuccess(synced
         ? 'Colaborador cadastrado com sucesso! Redirecionando...'
         : 'Salvo localmente. Será sincronizado com o banco quando a conexão estiver disponível.'
