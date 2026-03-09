@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { queryClient } from '@/libs/tanstack-query'
 import { createStaff, listStaffs } from '@/services/staffs'
@@ -12,12 +11,10 @@ export function useStaffs() {
 }
 
 export function useCreateStaff() {
-  const navigate = useNavigate()
   return useMutation({
     mutationFn: (data: StaffSchema) => createStaff(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['staffs'] })
-      navigate('/staffs')
     },
   })
 }
