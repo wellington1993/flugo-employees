@@ -44,7 +44,8 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
     currentProgress,
   } = useStaffForm(staffId, initialValues, isEdit)
 
-  const handleNext = async () => {
+  const handleNext = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
     const ok = await handleNextHook()
     if (!ok) {
       setToast({ message: 'Verifique os campos marcados em vermelho.', severity: 'error' })
@@ -108,7 +109,7 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
             {activeStep === 0 ? 'Informações Básicas' : 'Informações Profissionais'}
           </Typography>
 
-          <form onSubmit={(e) => e.preventDefault()}>
+          <form onSubmit={handleNext}>
             <Box sx={{ display: activeStep === 0 ? 'flex' : 'none', flexDirection: 'column', gap: 2 }}>
               <Controller
                 name="name"
@@ -117,6 +118,7 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
                   <FlugoTextField
                     {...field}
                     label="Título"
+                    autoFocus={activeStep === 0}
                     error={!!fieldState.error}
                     helperText={fieldState.error?.message}
                   />
@@ -164,12 +166,16 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
                     {...field}
                     label="Departamento"
                     options={departments}
+                    autoFocus={activeStep === 1}
                     error={!!fieldState.error}
                     helperText={fieldState.error?.message}
                   />
                 )}
               />
             </Box>
+            
+            {/* Hidden submit button to enable Enter key across all steps */}
+            <button type="submit" style={{ display: 'none' }} aria-hidden="true" />
           </form>
         </Box>
       </Box>
