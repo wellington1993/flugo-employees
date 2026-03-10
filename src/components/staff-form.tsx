@@ -61,6 +61,7 @@ export function StaffForm() {
       {/* Barra de Progresso Superior */}
       <Box>
         <Stack direction="row" alignItems="center" gap={2} mb={1}>
+
           <LinearProgress
             variant="determinate"
             value={currentProgress || (activeStep === 1 ? 50 : 0)}

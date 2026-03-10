@@ -23,7 +23,7 @@ const parseEnv = () => {
       VITE_FIREBASE_APP_ID: import.meta.env.VITE_FIREBASE_APP_ID,
     })
   } catch (e) {
-    console.warn('[Firebase] Configuração inválida ou ausente. Rodando em modo Offline Local.', e)
+    if (import.meta.env.DEV) console.warn('[Firebase] Configuração inválida ou ausente. Rodando em modo Offline Local.', e)
     return null
   }
 }

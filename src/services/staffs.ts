@@ -9,7 +9,7 @@ export async function listStaffs(): Promise<Staff[]> {
   return storage.list()
 }
 
-export async function createStaff(data: StaffSchema): Promise<{ synced: boolean; error?: string }> {
+export async function createStaff(data: StaffSchema) {
   return storage.create(data)
 }
 

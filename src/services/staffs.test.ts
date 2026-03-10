@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { listStaffs, createStaff } from './staffs'
 import * as firebaseLib from '@/libs/firebase'
 import * as localStorageService from '@/services/local-storage'
-import { getDocs, setDoc } from 'firebase/firestore'
+import { getDocs, setDoc, getDoc } from 'firebase/firestore'
 
 // Mocks dos módulos externos
 vi.mock('@/libs/firebase', () => ({
@@ -94,6 +94,7 @@ describe('Staffs Service', () => {
     })
 
     it('deve salvar no Firebase com sucesso e limpar pendente', async () => {
+      vi.mocked(getDoc).mockResolvedValue({ exists: () => false } as any)
       vi.mocked(setDoc).mockResolvedValue(undefined as any)
       
       const result = await createStaff(validData)

@@ -49,21 +49,13 @@ export function useStaffForm() {
 
   const onSubmit = async (data: StaffSchema) => {
     try {
-      const result = await createStaff(data)
+      await createStaff(data)
       
       submittedRef.current = true
       localStorage.removeItem(draftKey)
       
-      if (result.synced) {
-        setToast({ message: 'Colaborador cadastrado com sucesso!', severity: 'success' })
-      } else {
-        setToast({ 
-          message: `Salvo no dispositivo. Será enviado quando houver internet.`, 
-          severity: 'success' 
-        })
-      }
-      
-      setTimeout(() => navigate('/staffs'), 1500)
+      setToast({ message: 'Colaborador cadastrado com sucesso!', severity: 'success' })
+      setTimeout(() => navigate('/staffs'), 2000)
     } catch (err: unknown) {
       setToast({
         message: err instanceof Error ? err.message : 'Não foi possível salvar os dados.',
@@ -73,24 +65,21 @@ export function useStaffForm() {
   }
 
   const handleNext = async () => {
-    // Validação Granular por Sub-Schema de Step
     const currentStepSchema = stepSchemas[activeStep]
     const currentStepValues = form.getValues()
     
-    // Valida apenas os campos do passo atual contra o sub-schema
     const stepValidation = await currentStepSchema.safeParseAsync(currentStepValues)
     
     if (!stepValidation.success) {
-      // Mapeia erros do sub-schema para o form global do React Hook Form
       stepValidation.error.issues.forEach((issue) => {
         form.setError(issue.path[0] as any, { 
           message: issue.message 
         })
       })
+      setToast({ message: 'Verifique os campos marcados em vermelho.', severity: 'error' })
       return false
     }
 
-    // UX Preventiva: Validação de E-mail Único no Step 0
     if (activeStep === 0) {
       const email = form.getValues('email').trim().toLowerCase()
       const isDuplicate = staffs?.some(s => s.email.trim().toLowerCase() === email)

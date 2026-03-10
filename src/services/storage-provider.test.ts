@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { FirebaseStorage, LocalOnlyStorage } from './storage-provider'
 import * as firebaseLib from '@/libs/firebase'
 import * as localStorageService from '@/services/local-storage'
-import { getDocs, setDoc } from 'firebase/firestore'
+import { getDocs, setDoc, getDoc } from 'firebase/firestore'
 
 // Mocks
 vi.mock('@/libs/firebase', () => ({
@@ -44,6 +44,7 @@ describe('Storage Providers', () => {
     })
 
     it('deve salvar no Firebase com sucesso', async () => {
+      vi.mocked(getDoc).mockResolvedValue({ exists: () => false } as any)
       vi.mocked(setDoc).mockResolvedValue(undefined as any)
       const data = { email: 'test@a.com', name: 'Test' } as any
       

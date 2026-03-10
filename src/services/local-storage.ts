@@ -13,6 +13,7 @@ export function getPendingStaffs(): Staff[] {
     const all: Staff[] = raw ? JSON.parse(raw) : []
     const seen = new Set<string>()
     return all.filter(s => {
+      if (!s.email) return false
       if (seen.has(s.email)) return false
       seen.add(s.email)
       return true
@@ -30,6 +31,7 @@ export function addPendingStaff(data: StaffSchema): Staff {
     id: localId,
     _localId: localId,
     _pendingSync: true,
+    createdAt: Date.now(),
   }
   localStorage.setItem(LS_KEY, JSON.stringify([...pending, staff]))
   return staff
