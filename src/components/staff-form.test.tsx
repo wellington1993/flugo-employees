@@ -5,7 +5,6 @@ import { StaffForm } from './staff-form'
 import { ThemeProvider, createTheme } from '@mui/material'
 import * as useStaffFormHook from '@/features/staff/use-staff-form'
 import { useForm } from 'react-hook-form'
-import React from 'react'
 import { BrowserRouter } from 'react-router-dom'
 import { renderHook } from '@testing-library/react'
 
@@ -36,7 +35,7 @@ describe('StaffForm Component - Navegação e Teclado', () => {
     }))
 
     vi.mocked(useStaffFormHook.useStaffForm).mockReturnValue({
-      form: result.current,
+      form: result.current as any,
       activeStep,
       steps: ['Passo 1', 'Passo 2'],
       isPending: false,
