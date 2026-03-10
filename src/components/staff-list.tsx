@@ -20,6 +20,8 @@ import {
   Tooltip,
   Typography,
   Skeleton,
+  useMediaQuery,
+  useTheme,
   type TableCellProps,
 } from '@mui/material'
 import SyncIcon from '@mui/icons-material/Sync'
@@ -53,6 +55,8 @@ const departmentOptions: { value: StaffDepartments | ''; label: string }[] = [
 ]
 
 export function StaffList() {
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const { data: staffs, isLoading, isError } = useStaffs()
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(10)
@@ -88,23 +92,38 @@ export function StaffList() {
 
   return (
     <Box>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" mb={3}>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        alignItems={{ xs: 'stretch', sm: 'center' }}
+        justifyContent="space-between"
+        mb={3}
+        gap={2}
+      >
         <Typography variant="h5" fontWeight={600}>
           Colaboradores
         </Typography>
-        <Button variant="contained" component={Link} to="/staffs/new" startIcon={<PersonAddAlt1Icon />}>
+        <Button
+          variant="contained"
+          component={Link}
+          to="/staffs/new"
+          startIcon={<PersonAddAlt1Icon />}
+          fullWidth={isMobile}
+        >
           Novo Colaborador
         </Button>
       </Stack>
 
-      {/* Filters hidden */}
+      {/* Filters hidden to align with original challenge scope */}
       <Box sx={{ display: 'none' }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} gap={2} mb={2}>
           <TextField
             size="small"
             placeholder="Buscar por nome ou e-mail"
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(0) }}
+            onChange={(e) => {
+              setSearch(e.target.value)
+              setPage(0)
+            }}
             sx={{ flex: 1 }}
             InputProps={{
               startAdornment: (
@@ -119,11 +138,16 @@ export function StaffList() {
             size="small"
             label="Status"
             value={filterStatus}
-            onChange={(e) => { setFilterStatus(e.target.value as StaffStatus | ''); setPage(0) }}
+            onChange={(e) => {
+              setFilterStatus(e.target.value as StaffStatus | '')
+              setPage(0)
+            }}
             sx={{ minWidth: 130 }}
           >
             {statusOptions.map((o) => (
-              <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+              <MenuItem key={o.value} value={o.value}>
+                {o.label}
+              </MenuItem>
             ))}
           </TextField>
           <TextField
@@ -131,22 +155,36 @@ export function StaffList() {
             size="small"
             label="Departamento"
             value={filterDepartment}
-            onChange={(e) => { setFilterDepartment(e.target.value as StaffDepartments | ''); setPage(0) }}
+            onChange={(e) => {
+              setFilterDepartment(e.target.value as StaffDepartments | '')
+              setPage(0)
+            }}
             sx={{ minWidth: 160 }}
           >
             {departmentOptions.map((o) => (
-              <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+              <MenuItem key={o.value} value={o.value}>
+                {o.label}
+              </MenuItem>
             ))}
           </TextField>
         </Stack>
       </Box>
 
-      <TableContainer component={Paper} elevation={0} variant="outlined">
+      <TableContainer component={Paper} elevation={0} variant="outlined" sx={{ overflowX: 'auto' }}>
         <Table>
           <TableHead>
             <TableRow sx={{ bgcolor: 'grey.50' }}>
               {columns.map((col) => (
-                <TableCell key={col.id} align={col.align}>
+                <TableCell
+                  key={col.id}
+                  align={col.align}
+                  sx={{
+                    display:
+                      col.id === 'email' || col.id === 'department'
+                        ? { xs: 'none', md: 'table-cell' }
+                        : 'table-cell',
+                  }}
+                >
                   <TableSortLabel
                     active={orderBy === col.id}
                     direction={orderBy === col.id ? order : 'asc'}
@@ -161,8 +199,6 @@ export function StaffList() {
                   </TableSortLabel>
                 </TableCell>
               ))}
-              {/* Action column hidden to align with original scope */}
-              {/* <TableCell align="right" sx={{ width: 96 }} /> */}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -175,23 +211,30 @@ export function StaffList() {
                       <Skeleton variant="text" width={120} />
                     </Stack>
                   </TableCell>
-                  <TableCell><Skeleton variant="text" width={180} /></TableCell>
-                  <TableCell><Skeleton variant="text" width={100} /></TableCell>
-                  <TableCell align="center"><Skeleton variant="rounded" width={80} height={24} /></TableCell>
-                  {/* <TableCell /> */}
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                    <Skeleton variant="text" width={180} />
+                  </TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                    <Skeleton variant="text" width={100} />
+                  </TableCell>
+                  <TableCell align="center">
+                    <Skeleton variant="rounded" width={80} height={24} />
+                  </TableCell>
                 </TableRow>
               ))}
             {isError && (
               <TableRow>
-                <TableCell colSpan={4} align="center" sx={{ py: 4, color: 'error.main' }}>
+                <TableCell colSpan={isMobile ? 2 : 4} align="center" sx={{ py: 4, color: 'error.main' }}>
                   Não foi possível carregar os colaboradores. Verifique sua conexão e tente novamente.
                 </TableCell>
               </TableRow>
             )}
             {!isLoading && !isError && !filtered.length && (
               <TableRow>
-                <TableCell colSpan={4} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                  {staffs?.length ? 'Nenhum resultado para os filtros aplicados.' : 'Nenhum colaborador cadastrado ainda.'}
+                <TableCell colSpan={isMobile ? 2 : 4} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                  {staffs?.length
+                    ? 'Nenhum resultado para os filtros aplicados.'
+                    : 'Nenhum colaborador cadastrado ainda.'}
                 </TableCell>
               </TableRow>
             )}
@@ -207,11 +250,20 @@ export function StaffList() {
                         .join('')
                         .toUpperCase()}
                     </Avatar>
-                    {row.name}
+                    <Box>
+                      <Typography variant="body2" fontWeight={500}>
+                        {row.name}
+                      </Typography>
+                      {isMobile && (
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                          {row.email}
+                        </Typography>
+                      )}
+                    </Box>
                   </Stack>
                 </TableCell>
-                <TableCell>{row.email}</TableCell>
-                <TableCell>{row.department}</TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{row.email}</TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{row.department}</TableCell>
                 <TableCell align="center">
                   {row._pendingSync ? (
                     <Tooltip title="Salvo localmente, aguardando sincronização com o banco de dados">
@@ -232,23 +284,6 @@ export function StaffList() {
                     />
                   )}
                 </TableCell>
-                {/* Edit/Delete hidden */}
-                {/* <TableCell align="right">
-                  {!row._pendingSync && (
-                    <Stack direction="row" justifyContent="flex-end" gap={0.5}>
-                      <Tooltip title="Editar">
-                        <IconButton size="small" onClick={() => navigate(`/staffs/${row.id}/edit`)}>
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Excluir">
-                        <IconButton size="small" color="error" onClick={() => setDeleteTarget(row)}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </Stack>
-                  )}
-                </TableCell> */}
               </TableRow>
             ))}
           </TableBody>
@@ -259,9 +294,12 @@ export function StaffList() {
           page={page}
           rowsPerPage={rowsPerPage}
           onPageChange={(_, newPage) => setPage(newPage)}
-          onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0) }}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(parseInt(e.target.value, 10))
+            setPage(0)
+          }}
           rowsPerPageOptions={[5, 10, 25]}
-          labelRowsPerPage="Por página:"
+          labelRowsPerPage={isMobile ? '' : 'Por página:'}
           labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
         />
       </TableContainer>

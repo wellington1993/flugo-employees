@@ -1,6 +1,11 @@
 import { AppBar, Box, Toolbar } from '@mui/material'
+import type { ReactNode } from 'react'
 
-export function Header() {
+interface HeaderProps {
+  children?: ReactNode
+}
+
+export function Header({ children }: HeaderProps) {
   return (
     <AppBar
       position="static"
@@ -8,7 +13,10 @@ export function Header() {
       elevation={0}
       sx={{ borderBottom: '1px solid #e0e0e0', bgcolor: '#fff' }}
     >
-      <Toolbar variant="dense" sx={{ justifyContent: 'flex-end', px: { xs: 2, md: 4 } }}>
+      <Toolbar variant="dense" sx={{ px: { xs: 2, md: 4 } }}>
+        <Box sx={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+          {children}
+        </Box>
         <Box
           component="img"
           src="https://api.dicebear.com/9.x/personas/svg?seed=Wellington"

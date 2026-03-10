@@ -23,15 +23,19 @@ export function useStaffForm(staffId?: string, initialValues?: Partial<StaffSche
   const { mutateAsync: createStaff, isPending: isCreating } = useCreateStaff()
   const { mutateAsync: updateStaff, isPending: isUpdating } = useUpdateStaff()
 
+  const defaultValues: StaffSchema = {
+    name: '',
+    email: '',
+    status: 'ACTIVE',
+    department: 'TI',
+    ...initialValues,
+    ...(draftKey ? JSON.parse(localStorage.getItem(draftKey) || '{}') : {}),
+  }
+
   const form = useForm<StaffSchema>({
     mode: 'onChange',
     resolver: zodResolver(staffSchema),
-    defaultValues: initialValues ?? (draftKey ? JSON.parse(localStorage.getItem(draftKey) || '{}') : undefined) ?? {
-      name: '',
-      email: '',
-      status: 'ACTIVE',
-      department: 'TI',
-    },
+    defaultValues,
   })
 
   // Persistência de rascunho
@@ -74,13 +78,14 @@ export function useStaffForm(staffId?: string, initialValues?: Partial<StaffSche
     const fields = STEP_FIELDS[activeStep]
     const isValid = await form.trigger(fields)
     
-    if (!isValid) return
+    if (!isValid) return false
 
     if (activeStep === STEPS.length - 1) {
       await form.handleSubmit(onSubmit)()
     } else {
       setActiveStep(prev => prev + 1)
     }
+    return true
   }
 
   const handleBack = () => {

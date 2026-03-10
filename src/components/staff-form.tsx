@@ -11,6 +11,8 @@ import {
   Stepper,
   Switch,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material'
 import CheckIcon from '@mui/icons-material/Check'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
@@ -27,6 +29,9 @@ type StaffFormProps = {
 }
 
 export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormProps) {
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+
   const {
     form,
     activeStep,
@@ -34,16 +39,23 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
     isPending,
     toast,
     setToast,
-    handleNext,
+    handleNext: handleNextHook,
     handleBack,
     currentProgress,
     existingStaffs
   } = useStaffForm(staffId, initialValues, isEdit)
 
+  const handleNext = async () => {
+    const ok = await handleNextHook()
+    if (!ok) {
+      setToast({ message: 'Por favor, corrija os erros no formulário.', severity: 'error' })
+    }
+  }
+
   const isLastStep = activeStep === steps.length - 1
 
   return (
-    <Box minHeight="50vh" display="flex" flexDirection="column" gap={3}>
+    <Box minHeight="50vh" display="flex" flexDirection="column" gap={isMobile ? 2 : 3}>
       <Box>
         <Stack direction="row" alignItems="center" gap={2} mb={0.5}>
           <LinearProgress
@@ -57,8 +69,12 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
         </Stack>
       </Box>
 
-      <Box display="flex" gap={5}>
-        <Stepper activeStep={activeStep} orientation="vertical" sx={{ minWidth: 180 }}>
+      <Box display="flex" flexDirection={isMobile ? 'column' : 'row'} gap={isMobile ? 3 : 5}>
+        <Stepper 
+          activeStep={activeStep} 
+          orientation={isMobile ? 'horizontal' : 'vertical'} 
+          sx={{ minWidth: isMobile ? '100%' : 180 }}
+        >
           {steps.map((label, index) => (
             <Step key={label} completed={activeStep > index}>
               <StepLabel
@@ -82,7 +98,7 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
                     : undefined
                 }
               >
-                {label}
+                {(!isMobile || activeStep === index) && label}
               </StepLabel>
             </Step>
           ))}
@@ -137,7 +153,6 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
                     label={isEdit ? 'Ativo' : 'Ativar ao criar'}
                     control={
                       <Switch
-                        {...field}
                         checked={field.value === 'ACTIVE'}
                         onChange={(e) => field.onChange(e.target.checked ? 'ACTIVE' : 'INACTIVE')}
                       />
@@ -172,7 +187,8 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
           onClick={handleBack}
           startIcon={<ArrowBackIcon />}
           disabled={isPending}
-          sx={{ borderColor: 'divider', color: 'text.secondary' }}
+          fullWidth={isMobile}
+          sx={{ borderColor: 'divider', color: 'text.secondary', mr: isMobile ? 1 : 0 }}
         >
           Voltar
         </Button>
@@ -180,6 +196,8 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
           variant="contained"
           onClick={handleNext}
           disabled={isPending}
+          fullWidth={isMobile}
+          sx={{ ml: isMobile ? 1 : 0 }}
         >
           {isLastStep ? (isPending ? 'Salvando...' : isEdit ? 'Salvar' : 'Concluir') : 'Próximo'}
         </Button>
