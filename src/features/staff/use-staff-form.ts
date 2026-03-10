@@ -2,14 +2,10 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { staffSchema, type StaffSchema } from '@/features/staff/validation'
+import { staffSchema, stepSchemas, type StaffSchema } from '@/features/staff/validation'
 import { useCreateStaff, useStaffs } from '@/features/staff/hooks'
 
 const STEPS = ['Infos Básicas', 'Infos Profissionais']
-const STEP_FIELDS: Array<Array<keyof StaffSchema>> = [
-  ['name', 'email', 'status'],
-  ['department'],
-]
 
 export function useStaffForm() {
   const navigate = useNavigate()
@@ -77,8 +73,24 @@ export function useStaffForm() {
   }
 
   const handleNext = async () => {
-    const fields = STEP_FIELDS[activeStep]
+    // Validação Granular por Sub-Schema de Step
+    const currentStepSchema = stepSchemas[activeStep]
+    const currentStepValues = form.getValues()
     
+    // Valida apenas os campos do passo atual contra o sub-schema
+    const stepValidation = await currentStepSchema.safeParseAsync(currentStepValues)
+    
+    if (!stepValidation.success) {
+      // Mapeia erros do sub-schema para o form global do React Hook Form
+      stepValidation.error.issues.forEach((issue) => {
+        form.setError(issue.path[0] as any, { 
+          message: issue.message 
+        })
+      })
+      return false
+    }
+
+    // UX Preventiva: Validação de E-mail Único no Step 0
     if (activeStep === 0) {
       const email = form.getValues('email').trim().toLowerCase()
       const isDuplicate = staffs?.some(s => s.email.trim().toLowerCase() === email)
@@ -91,9 +103,6 @@ export function useStaffForm() {
         return false
       }
     }
-
-    const isValid = await form.trigger(fields)
-    if (!isValid) return false
 
     if (activeStep === STEPS.length - 1) {
       await form.handleSubmit(onSubmit)()

@@ -9,14 +9,21 @@ import { queryClient } from '@/libs/tanstack-query'
 import { AppRouter } from '@/routes/app-router'
 import '@/index.css'
 
+// Verifica se o ambiente é produção para evitar erros de Analytics no localhost
+const isProduction = import.meta.env.PROD
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <ErrorBoundary>
           <AppRouter />
-          <Analytics />
-          <SpeedInsights />
+          {isProduction && (
+            <>
+              <Analytics />
+              <SpeedInsights />
+            </>
+          )}
         </ErrorBoundary>
       </ThemeProvider>
     </QueryClientProvider>

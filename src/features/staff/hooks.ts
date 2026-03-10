@@ -1,5 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
-import { queryClient } from '@/libs/tanstack-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createStaff, listStaffs, pushStaffToFirebase, updateStaff, deleteStaff } from '@/services/staffs'
 import { getPendingStaffs } from '@/services/local-storage'
 import type { StaffSchema } from './validation'
@@ -13,26 +12,42 @@ export function useStaffs() {
 }
 
 export function useCreateStaff() {
+  const queryClient = useQueryClient()
+  
   return useMutation({
     mutationFn: (data: StaffSchema) => createStaff(data),
+    
+    // 🛡️ Defesa de Arquiteto: Optimistic Update para UX instantânea
     onMutate: async (newStaff) => {
+      // Cancela queries em andamento para não sobrescrever o cache otimista
       await queryClient.cancelQueries({ queryKey: ['staffs'] })
+      
+      // Snapshot do cache atual para rollback em caso de erro
       const previousStaffs = queryClient.getQueryData<Staff[]>(['staffs'])
 
+      // Atualiza o cache instantaneamente
       queryClient.setQueryData(['staffs'], (old: Staff[] | undefined) => {
         const optimisticEntry: Staff = {
-          id: `temp-${Date.now()}`,
           ...newStaff,
+          id: `temp-${Date.now()}`,
+          _localId: `temp-${Date.now()}`,
           _pendingSync: true,
+          createdAt: Date.now()
         }
         return old ? [optimisticEntry, ...old] : [optimisticEntry]
       })
 
       return { previousStaffs }
     },
+    
+    // Em caso de erro real (ex: timeout longo), restaura o cache anterior
     onError: (_err, _newStaff, context) => {
-      queryClient.setQueryData(['staffs'], context?.previousStaffs)
+      if (context?.previousStaffs) {
+        queryClient.setQueryData(['staffs'], context.previousStaffs)
+      }
     },
+    
+    // Sempre invalida após finalizar para sincronizar com a "verdade" do servidor
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['staffs'] })
     },
@@ -40,6 +55,7 @@ export function useCreateStaff() {
 }
 
 export function useUpdateStaff() {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: StaffSchema }) => updateStaff(id, data),
     onSuccess: () => {
@@ -49,6 +65,7 @@ export function useUpdateStaff() {
 }
 
 export function useDeleteStaff() {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => deleteStaff(id),
     onSuccess: () => {
@@ -58,6 +75,7 @@ export function useDeleteStaff() {
 }
 
 export function useSyncPending() {
+  const queryClient = useQueryClient()
   const pending = getPendingStaffs()
   const pendingCount = pending.length
 
