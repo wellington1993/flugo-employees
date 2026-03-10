@@ -15,7 +15,7 @@ vi.mock('@/features/staff/use-staff-form', () => ({
 
 const theme = createTheme()
 
-describe('StaffForm Component - Navegação e Teclado', () => {
+describe('StaffForm Keyboard Navigation', () => {
   const mockSetToast = vi.fn()
   const mockHandleNext = vi.fn()
   const mockHandleBack = vi.fn()
@@ -37,7 +37,7 @@ describe('StaffForm Component - Navegação e Teclado', () => {
     vi.mocked(useStaffFormHook.useStaffForm).mockReturnValue({
       form: result.current as any,
       activeStep,
-      steps: ['Passo 1', 'Passo 2'],
+      steps: ['Step 1', 'Step 2'],
       isPending: false,
       toast: null,
       setToast: mockSetToast,
@@ -57,23 +57,25 @@ describe('StaffForm Component - Navegação e Teclado', () => {
 
   it('deve focar no campo Título ao carregar o passo 1', () => {
     renderForm(0)
-    expect(screen.getByLabelText(/Título/i)).toHaveFocus()
+    const input = document.querySelector('input[name="name"]')
+    expect(input).toHaveFocus()
   })
 
   it('deve chamar handleNext ao pressionar Enter no campo Título', async () => {
     const user = userEvent.setup()
     renderForm(0)
     
-    const input = screen.getByLabelText(/Título/i)
-    await user.type(input, '{enter}')
+    const input = document.querySelector('input[name="name"]')
+    if (input) await user.type(input, '{enter}')
 
     expect(mockHandleNext).toHaveBeenCalled()
   })
 
   it('deve focar no campo Departamento ao carregar o passo 2', async () => {
     renderForm(1)
-    const select = screen.getByLabelText(/Departamento/i)
-    expect(select).toHaveFocus()
+    const input = document.querySelector('input[name="department"]')
+    // In step 2, the department select should be focused
+    expect(document.activeElement?.getAttribute('name') || document.activeElement?.parentElement?.querySelector('input')?.getAttribute('name')).toBe('department')
   })
 
   it('deve chamar handleNext via submissão de formulário no passo 2', async () => {

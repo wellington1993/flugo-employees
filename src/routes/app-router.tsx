@@ -5,7 +5,6 @@ import { CircularProgress, Box } from '@mui/material'
 const App = lazy(() => import('@/App'))
 const StaffList = lazy(() => import('@/components/staff-list'))
 const StaffForm = lazy(() => import('@/components/staff-form'))
-const StaffEditPage = lazy(() => import('@/components/staff-edit-page'))
 const NotFound = lazy(() => import('@/components/not-found'))
 
 function Loading() {
@@ -24,7 +23,6 @@ export function AppRouter() {
           <Route element={<App />}>
             <Route path="/staffs" element={<StaffList />} />
             <Route path="/staffs/new" element={<StaffForm />} />
-            <Route path="/staffs/:id/edit" element={<StaffEditPage />} />
             <Route index element={<Navigate to="/staffs" replace />} />
             <Route path="*" element={<NotFound />} />
           </Route>
