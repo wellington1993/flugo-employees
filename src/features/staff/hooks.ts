@@ -16,16 +16,10 @@ export function useCreateStaff() {
   
   return useMutation({
     mutationFn: (data: StaffSchema) => createStaff(data),
-    
-    // 🛡️ Defesa de Arquiteto: Optimistic Update para UX instantânea
     onMutate: async (newStaff) => {
-      // Cancela queries em andamento para não sobrescrever o cache otimista
       await queryClient.cancelQueries({ queryKey: ['staffs'] })
-      
-      // Snapshot do cache atual para rollback em caso de erro
       const previousStaffs = queryClient.getQueryData<Staff[]>(['staffs'])
 
-      // Atualiza o cache instantaneamente
       queryClient.setQueryData(['staffs'], (old: Staff[] | undefined) => {
         const optimisticEntry: Staff = {
           ...newStaff,
@@ -39,17 +33,26 @@ export function useCreateStaff() {
 
       return { previousStaffs }
     },
-    
-    // Em caso de erro real (ex: timeout longo), restaura o cache anterior
+    onSuccess: (result, newStaff) => {
+      if (result.synced) {
+        // Online: Firebase é a fonte da verdade, busca os dados reais
+        queryClient.invalidateQueries({ queryKey: ['staffs'] })
+      } else {
+        // Offline: substitui a entrada temporária pelo registro real do localStorage
+        // sem disparar um refetch (Firebase está indisponível)
+        const pendingEntry = getPendingStaffs().find(s => s.email === newStaff.email)
+        if (pendingEntry) {
+          queryClient.setQueryData(['staffs'], (old: Staff[] | undefined) => {
+            const withoutTemp = (old || []).filter(s => !s.id.startsWith('temp-'))
+            return [pendingEntry, ...withoutTemp]
+          })
+        }
+      }
+    },
     onError: (_err, _newStaff, context) => {
       if (context?.previousStaffs) {
         queryClient.setQueryData(['staffs'], context.previousStaffs)
       }
-    },
-    
-    // Sempre invalida após finalizar para sincronizar com a "verdade" do servidor
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['staffs'] })
     },
   })
 }
