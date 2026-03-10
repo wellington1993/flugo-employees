@@ -4,8 +4,6 @@ import {
   Box,
   Button,
   Chip,
-  InputAdornment,
-  MenuItem,
   Paper,
   Stack,
   Table,
@@ -16,7 +14,6 @@ import {
   TablePagination,
   TableRow,
   TableSortLabel,
-  TextField,
   Tooltip,
   Typography,
   Skeleton,
@@ -26,34 +23,24 @@ import {
 } from '@mui/material'
 import SyncIcon from '@mui/icons-material/Sync'
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1'
-import SearchIcon from '@mui/icons-material/Search'
 import { visuallyHidden } from '@mui/utils'
 import { Link } from 'react-router-dom'
-import { useStaffs, useSyncPending, useDeleteStaff } from '@/features/staff/hooks'
+import { useStaffs, useSyncPending } from '@/features/staff/hooks'
 import { useSortTable } from '@/hooks/use-sort-table'
 import { getComparator } from '@/helpers/table-sorting'
-import type { Staff, StaffDepartments, StaffStatus } from '@/features/staff/types'
-import { departments } from '@/features/staff/validation'
-import { DeleteConfirmDialog } from '@/components/delete-confirm-dialog'
+import type { Staff } from '@/features/staff/types'
 
 const columns: { id: keyof Staff; label: string; align?: TableCellProps['align'] }[] = [
-  { id: 'name', label: 'Nome' },
-  { id: 'email', label: 'Email' },
-  { id: 'department', label: 'Departamento' },
+  { id: 'name', label: 'Colaborador' },
+  { id: 'email', label: 'E-mail', align: 'left' },
+  { id: 'department', label: 'Departamento', align: 'left' },
   { id: 'status', label: 'Status', align: 'center' },
 ]
 
-const statusOptions: { value: StaffStatus | ''; label: string }[] = [
-  { value: '', label: 'Todos' },
-  { value: 'ACTIVE', label: 'Ativo' },
-  { value: 'INACTIVE', label: 'Inativo' },
-]
-
-const departmentOptions: { value: StaffDepartments | ''; label: string }[] = [
-  { value: '', label: 'Todos' },
-  ...departments.map((d) => ({ value: d, label: d })),
-]
-
+/**
+ * Componente de Listagem de Colaboradores.
+ * Focado em legibilidade, performance e feedback de sincronização.
+ */
 export function StaffList() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
@@ -62,116 +49,67 @@ export function StaffList() {
   const [rowsPerPage, setRowsPerPage] = useState(10)
   const { order, orderBy, createSortHandler } = useSortTable('name', setPage)
   const { pendingCount, sync } = useSyncPending()
-  const { mutateAsync: deleteStaff, isPending: isDeleting } = useDeleteStaff()
 
-  const [search, setSearch] = useState('')
-  const [filterStatus, setFilterStatus] = useState<StaffStatus | ''>('')
-  const [filterDepartment, setFilterDepartment] = useState<StaffDepartments | ''>('')
-  const [deleteTarget, setDeleteTarget] = useState<Staff | null>(null)
-
+  // Sincronização automática ao carregar a página se houver itens offline
   useEffect(() => {
-    if (pendingCount > 0) sync()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    if (pendingCount > 0) {
+      sync().catch(console.error)
+    }
+  }, [pendingCount, sync])
 
-  const filtered = (staffs ?? []).filter((s) => {
-    const q = search.toLowerCase()
-    const matchSearch = !q || s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q)
-    const matchStatus = !filterStatus || s.status === filterStatus
-    const matchDept = !filterDepartment || s.department === filterDepartment
-    return matchSearch && matchStatus && matchDept
-  })
-
-  const sorted = filtered.slice().sort(getComparator(order, orderBy))
+  const sorted = (staffs ?? []).slice().sort(getComparator(order, orderBy))
   const paginated = sorted.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
 
-  const handleDelete = async () => {
-    if (!deleteTarget) return
-    await deleteStaff(deleteTarget.id)
-    setDeleteTarget(null)
-  }
-
   return (
-    <Box>
+    <Box sx={{ p: isMobile ? 1 : 2 }}>
+      {/* Cabeçalho da Página */}
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         alignItems={{ xs: 'stretch', sm: 'center' }}
         justifyContent="space-between"
-        mb={3}
+        mb={4}
         gap={2}
       >
-        <Typography variant="h5" fontWeight={600}>
-          Colaboradores
-        </Typography>
+        <Box>
+          <Typography variant="h4" fontWeight={800} color="text.primary">
+            Colaboradores
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Gerencie e visualize a equipe da sua empresa.
+          </Typography>
+        </Box>
         <Button
           variant="contained"
           component={Link}
           to="/staffs/new"
           startIcon={<PersonAddAlt1Icon />}
+          sx={{ 
+            px: 3, 
+            py: 1.2, 
+            borderRadius: 2, 
+            fontWeight: 600, 
+            boxShadow: 0,
+            '&:hover': { boxShadow: theme.shadows[2] }
+          }}
           fullWidth={isMobile}
         >
           Novo Colaborador
         </Button>
       </Stack>
 
-      {/* Filters hidden to align with original challenge scope */}
-      <Box sx={{ display: 'none' }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} gap={2} mb={2}>
-          <TextField
-            size="small"
-            placeholder="Buscar por nome ou e-mail"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value)
-              setPage(0)
-            }}
-            sx={{ flex: 1 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" />
-                </InputAdornment>
-              ),
-            }}
-          />
-          <TextField
-            select
-            size="small"
-            label="Status"
-            value={filterStatus}
-            onChange={(e) => {
-              setFilterStatus(e.target.value as StaffStatus | '')
-              setPage(0)
-            }}
-            sx={{ minWidth: 130 }}
-          >
-            {statusOptions.map((o) => (
-              <MenuItem key={o.value} value={o.value}>
-                {o.label}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            select
-            size="small"
-            label="Departamento"
-            value={filterDepartment}
-            onChange={(e) => {
-              setFilterDepartment(e.target.value as StaffDepartments | '')
-              setPage(0)
-            }}
-            sx={{ minWidth: 160 }}
-          >
-            {departmentOptions.map((o) => (
-              <MenuItem key={o.value} value={o.value}>
-                {o.label}
-              </MenuItem>
-            ))}
-          </TextField>
-        </Stack>
-      </Box>
-
-      <TableContainer component={Paper} elevation={0} variant="outlined" sx={{ overflowX: 'auto' }}>
-        <Table>
+      {/* Tabela de Dados */}
+      <TableContainer 
+        component={Paper} 
+        elevation={0} 
+        variant="outlined" 
+        sx={{ 
+          borderRadius: 3, 
+          overflow: 'hidden',
+          border: '1px solid',
+          borderColor: 'divider'
+        }}
+      >
+        <Table sx={{ minWidth: 650 }}>
           <TableHead>
             <TableRow sx={{ bgcolor: 'grey.50' }}>
               {columns.map((col) => (
@@ -179,6 +117,11 @@ export function StaffList() {
                   key={col.id}
                   align={col.align}
                   sx={{
+                    fontWeight: 700,
+                    color: 'text.secondary',
+                    fontSize: 12,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
                     display:
                       col.id === 'email' || col.id === 'department'
                         ? { xs: 'none', md: 'table-cell' }
@@ -202,47 +145,71 @@ export function StaffList() {
             </TableRow>
           </TableHead>
           <TableBody>
+            {/* Estado de Carregamento (Skeleton) */}
             {isLoading &&
               Array.from(new Array(5)).map((_, index) => (
                 <TableRow key={index}>
                   <TableCell>
-                    <Stack direction="row" alignItems="center" gap={1.5}>
-                      <Skeleton variant="circular" width={36} height={36} />
-                      <Skeleton variant="text" width={120} />
+                    <Stack direction="row" alignItems="center" gap={2}>
+                      <Skeleton variant="circular" width={40} height={40} />
+                      <Skeleton variant="text" width={140} height={24} />
                     </Stack>
                   </TableCell>
                   <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
-                    <Skeleton variant="text" width={180} />
+                    <Skeleton variant="text" width={200} />
                   </TableCell>
                   <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                     <Skeleton variant="text" width={100} />
                   </TableCell>
                   <TableCell align="center">
-                    <Skeleton variant="rounded" width={80} height={24} />
+                    <Skeleton variant="rounded" width={80} height={28} />
                   </TableCell>
                 </TableRow>
               ))}
+
+            {/* Estado de Erro */}
             {isError && (
               <TableRow>
-                <TableCell colSpan={isMobile ? 2 : 4} align="center" sx={{ py: 4, color: 'error.main' }}>
-                  Não foi possível carregar os colaboradores. Verifique sua conexão e tente novamente.
+                <TableCell colSpan={4} align="center" sx={{ py: 8 }}>
+                  <Typography variant="body1" color="error" fontWeight={500}>
+                    Ops! Não conseguimos carregar a lista.
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Verifique sua conexão e tente atualizar a página.
+                  </Typography>
                 </TableCell>
               </TableRow>
             )}
-            {!isLoading && !isError && !filtered.length && (
+
+            {/* Lista Vazia */}
+            {!isLoading && !isError && !sorted.length && (
               <TableRow>
-                <TableCell colSpan={isMobile ? 2 : 4} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                  {staffs?.length
-                    ? 'Nenhum resultado para os filtros aplicados.'
-                    : 'Nenhum colaborador cadastrado ainda.'}
+                <TableCell colSpan={4} align="center" sx={{ py: 10 }}>
+                  <Typography variant="h6" color="text.secondary" fontWeight={500}>
+                    Nenhum colaborador encontrado.
+                  </Typography>
+                  <Typography variant="body2" color="text.disabled">
+                    Clique em "Novo Colaborador" para começar.
+                  </Typography>
                 </TableCell>
               </TableRow>
             )}
+
+            {/* Dados da Tabela */}
             {paginated.map((row) => (
-              <TableRow key={row.id} hover>
+              <TableRow key={row.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                 <TableCell>
-                  <Stack direction="row" alignItems="center" gap={1.5}>
-                    <Avatar sx={{ width: 36, height: 36, fontSize: 14, bgcolor: 'primary.light' }}>
+                  <Stack direction="row" alignItems="center" gap={2}>
+                    <Avatar 
+                      sx={{ 
+                        width: 40, 
+                        height: 40, 
+                        fontSize: 15, 
+                        fontWeight: 700,
+                        bgcolor: 'primary.main',
+                        color: 'primary.contrastText'
+                      }}
+                    >
                       {row.name
                         .split(' ')
                         .slice(0, 2)
@@ -251,7 +218,7 @@ export function StaffList() {
                         .toUpperCase()}
                     </Avatar>
                     <Box>
-                      <Typography variant="body2" fontWeight={500}>
+                      <Typography variant="subtitle2" fontWeight={700} color="text.primary">
                         {row.name}
                       </Typography>
                       {isMobile && (
@@ -262,25 +229,36 @@ export function StaffList() {
                     </Box>
                   </Stack>
                 </TableCell>
-                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{row.email}</TableCell>
-                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{row.department}</TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, color: 'text.secondary' }}>
+                  {row.email}
+                </TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, color: 'text.secondary' }}>
+                  {row.department}
+                </TableCell>
                 <TableCell align="center">
                   {row._pendingSync ? (
-                    <Tooltip title="Salvo localmente, aguardando sincronização com o banco de dados">
+                    <Tooltip title="Salvo localmente, aguardando conexão para enviar ao servidor">
                       <Chip
                         icon={<SyncIcon sx={{ fontSize: 14 }} />}
-                        label="Pendente"
+                        label="Sincronizando"
                         color="warning"
                         size="small"
                         variant="outlined"
+                        sx={{ fontWeight: 600, borderStyle: 'dashed' }}
                       />
                     </Tooltip>
                   ) : (
                     <Chip
                       label={row.status === 'ACTIVE' ? 'Ativo' : 'Inativo'}
-                      color={row.status === 'ACTIVE' ? 'success' : 'error'}
+                      color={row.status === 'ACTIVE' ? 'success' : 'default'}
                       size="small"
-                      variant="outlined"
+                      variant="filled"
+                      sx={{ 
+                        fontWeight: 700, 
+                        fontSize: 11,
+                        bgcolor: row.status === 'ACTIVE' ? 'success.light' : 'grey.100',
+                        color: row.status === 'ACTIVE' ? 'success.dark' : 'grey.600'
+                      }}
                     />
                   )}
                 </TableCell>
@@ -288,6 +266,8 @@ export function StaffList() {
             ))}
           </TableBody>
         </Table>
+        
+        {/* Paginação */}
         <TablePagination
           component="div"
           count={sorted.length}
@@ -299,18 +279,11 @@ export function StaffList() {
             setPage(0)
           }}
           rowsPerPageOptions={[5, 10, 25]}
-          labelRowsPerPage={isMobile ? '' : 'Por página:'}
+          labelRowsPerPage={isMobile ? '' : 'Linhas por página:'}
           labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
+          sx={{ borderTop: '1px solid', borderColor: 'divider' }}
         />
       </TableContainer>
-
-      <DeleteConfirmDialog
-        open={!!deleteTarget}
-        staffName={deleteTarget?.name ?? ''}
-        onConfirm={handleDelete}
-        onCancel={() => setDeleteTarget(null)}
-        isLoading={isDeleting}
-      />
     </Box>
   )
 }

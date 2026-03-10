@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { queryClient } from '@/libs/tanstack-query'
-import { createStaff, listStaffs, pushStaffToFirebase } from '@/services/staffs'
+import { createStaff, listStaffs, pushStaffToFirebase, updateStaff, deleteStaff } from '@/services/staffs'
 import { getPendingStaffs } from '@/services/local-storage'
 import type { StaffSchema } from './validation'
 import type { Staff } from './types'
@@ -34,6 +34,24 @@ export function useCreateStaff() {
       queryClient.setQueryData(['staffs'], context?.previousStaffs)
     },
     onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['staffs'] })
+    },
+  })
+}
+
+export function useUpdateStaff() {
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: StaffSchema }) => updateStaff(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staffs'] })
+    },
+  })
+}
+
+export function useDeleteStaff() {
+  return useMutation({
+    mutationFn: (id: string) => deleteStaff(id),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['staffs'] })
     },
   })

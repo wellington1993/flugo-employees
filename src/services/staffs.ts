@@ -19,5 +19,10 @@ export async function pushStaffToFirebase(staff: Staff): Promise<boolean> {
   return storage.sync(staff)
 }
 
-// Nota: updateStaff e deleteStaff foram removidos pois não fazem parte do escopo do figma.
-// Caso precise no futuro, basta adicionar à interface StaffStorage e implementá-los nos providers.
+export async function updateStaff(id: string, data: StaffSchema): Promise<void> {
+  return storage.update(id, data)
+}
+
+export async function deleteStaff(id: string): Promise<void> {
+  return storage.delete(id)
+}

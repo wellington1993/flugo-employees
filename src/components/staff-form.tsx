@@ -17,18 +17,12 @@ import {
 import CheckIcon from '@mui/icons-material/Check'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { Controller } from 'react-hook-form'
-import { departments, type StaffSchema } from '@/features/staff/validation'
+import { departments } from '@/features/staff/validation'
 import { useStaffForm } from '@/features/staff/use-staff-form'
 import { FlugoTextField } from './form/flugo-text-field'
 import { FlugoSelect } from './form/flugo-select'
 
-type StaffFormProps = {
-  staffId?: string
-  initialValues?: Partial<StaffSchema>
-  isEdit?: boolean
-}
-
-export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormProps) {
+export function StaffForm() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
@@ -42,7 +36,7 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
     handleNext: handleNextHook,
     handleBack,
     currentProgress,
-  } = useStaffForm(staffId, initialValues, isEdit)
+  } = useStaffForm()
 
   const handleNext = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
@@ -55,25 +49,52 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
   const isLastStep = activeStep === steps.length - 1
 
   return (
-    <Box minHeight="50vh" display="flex" flexDirection="column" gap={isMobile ? 2 : 3}>
+    <Box 
+      sx={{ 
+        minHeight: '60vh', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: isMobile ? 3 : 4,
+        p: isMobile ? 1 : 2 
+      }}
+    >
+      {/* Barra de Progresso Superior */}
       <Box>
-        <Stack direction="row" alignItems="center" gap={2} mb={0.5}>
+        <Stack direction="row" alignItems="center" gap={2} mb={1}>
           <LinearProgress
             variant="determinate"
-            value={currentProgress}
-            sx={{ flex: 1, height: 6, borderRadius: 3 }}
+            value={currentProgress || (activeStep === 1 ? 50 : 0)}
+            sx={{ 
+              flex: 1, 
+              height: 8, 
+              borderRadius: 4,
+              bgcolor: 'grey.100',
+              '& .MuiLinearProgress-bar': { borderRadius: 4 }
+            }}
           />
-          <Typography variant="body2" color="text.secondary" minWidth={36}>
-            {currentProgress}%
+          <Typography variant="caption" fontWeight={700} color="primary" sx={{ minWidth: 40 }}>
+            {activeStep === 0 ? '0%' : activeStep === 1 ? '50%' : '100%'}
           </Typography>
         </Stack>
+        <Typography variant="caption" color="text.secondary">
+          Passo {activeStep + 1} de {steps.length}: {steps[activeStep]}
+        </Typography>
       </Box>
 
-      <Box display="flex" flexDirection={isMobile ? 'column' : 'row'} gap={isMobile ? 3 : 5}>
+      <Box 
+        display="flex" 
+        flexDirection={isMobile ? 'column' : 'row'} 
+        gap={isMobile ? 4 : 6}
+        sx={{ flex: 1 }}
+      >
+        {/* Stepper Lateral/Superior */}
         <Stepper 
           activeStep={activeStep} 
           orientation={isMobile ? 'horizontal' : 'vertical'} 
-          sx={{ minWidth: isMobile ? '100%' : 180 }}
+          sx={{ 
+            minWidth: isMobile ? '100%' : 200,
+            '& .MuiStepLabel-label': { fontSize: 13, fontWeight: 500 }
+          }}
         >
           {steps.map((label, index) => (
             <Step key={label} completed={activeStep > index}>
@@ -86,7 +107,7 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
                             width: 24,
                             height: 24,
                             borderRadius: '50%',
-                            bgcolor: 'primary.main',
+                            bgcolor: 'success.main',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -104,23 +125,29 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
           ))}
         </Stepper>
 
-        <Box flex={1}>
-          <Typography variant="h6" fontWeight={600} color="text.secondary" mb={3}>
+        {/* Conteúdo do Formulário */}
+        <Box flex={1} sx={{ maxWidth: 600 }}>
+          <Typography variant="h6" fontWeight={700} color="text.primary" mb={4}>
             {activeStep === 0 ? 'Informações Básicas' : 'Informações Profissionais'}
           </Typography>
 
           <form onSubmit={handleNext}>
-            <Box sx={{ display: activeStep === 0 ? 'flex' : 'none', flexDirection: 'column', gap: 2 }}>
+            <Stack 
+              spacing={3} 
+              sx={{ display: activeStep === 0 ? 'flex' : 'none' }}
+            >
               <Controller
                 name="name"
                 control={form.control}
                 render={({ field, fieldState }) => (
                   <FlugoTextField
                     {...field}
-                    label="Título"
+                    label="Nome Completo"
+                    placeholder="ex: João da Silva"
                     autoFocus={activeStep === 0}
                     error={!!fieldState.error}
                     helperText={fieldState.error?.message}
+                    fullWidth
                   />
                 )}
               />
@@ -130,12 +157,12 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
                 render={({ field, fieldState }) => (
                   <FlugoTextField
                     {...field}
-                    label="E-mail"
+                    label="E-mail Corporativo"
                     type="email"
                     placeholder="ex: joao@empresa.com"
-                    disabled={isEdit}
                     error={!!fieldState.error}
                     helperText={fieldState.error?.message}
+                    fullWidth
                   />
                 )}
               />
@@ -144,7 +171,8 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
                 control={form.control}
                 render={({ field }) => (
                   <FormControlLabel
-                    label={isEdit ? 'Ativo' : 'Ativar ao criar'}
+                    label="Ativar colaborador imediatamente"
+                    sx={{ ml: 0, '& .MuiFormControlLabel-label': { fontSize: 14, color: 'text.secondary' } }}
                     control={
                       <Switch
                         {...field}
@@ -155,7 +183,7 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
                   />
                 )}
               />
-            </Box>
+            </Stack>
 
             <Box sx={{ display: activeStep === 1 ? 'block' : 'none' }}>
               <Controller
@@ -164,48 +192,66 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
                 render={({ field, fieldState }) => (
                   <FlugoSelect
                     {...field}
-                    label="Departamento"
+                    label="Selecione o Departamento"
                     options={departments}
                     autoFocus={activeStep === 1}
                     error={!!fieldState.error}
                     helperText={fieldState.error?.message}
+                    fullWidth
                   />
                 )}
               />
             </Box>
             
-            {/* Hidden submit button to enable Enter key across all steps */}
             <button type="submit" style={{ display: 'none' }} aria-hidden="true" />
           </form>
         </Box>
       </Box>
 
-      <Stack direction="row" justifyContent="space-between" mt="auto" pt={2}>
+      {/* Ações de Navegação */}
+      <Stack 
+        direction="row" 
+        justifyContent="space-between" 
+        mt="auto" 
+        pt={4}
+        sx={{ borderTop: '1px solid', borderColor: 'divider' }}
+      >
         <Button
           variant="outlined"
           onClick={handleBack}
           startIcon={<ArrowBackIcon />}
           disabled={isPending}
-          sx={{ borderColor: 'divider', color: 'text.secondary' }}
+          sx={{ 
+            borderColor: 'grey.300', 
+            color: 'text.secondary',
+            px: 3,
+            '&:hover': { borderColor: 'grey.400', bgcolor: 'grey.50' }
+          }}
         >
-          Voltar
+          {activeStep === 0 ? 'Cancelar' : 'Voltar'}
         </Button>
         <Button
           variant="contained"
           onClick={handleNext}
           disabled={isPending}
+          sx={{ px: 4, fontWeight: 600, boxShadow: 0 }}
         >
-          {isLastStep ? (isPending ? 'Salvando...' : isEdit ? 'Salvar' : 'Concluir') : 'Próximo'}
+          {isLastStep ? (isPending ? 'Salvando...' : 'Finalizar Cadastro') : 'Próximo Passo'}
         </Button>
       </Stack>
 
       <Snackbar
         open={!!toast}
-        autoHideDuration={3000}
+        autoHideDuration={4000}
         onClose={() => setToast(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity={toast?.severity} onClose={() => setToast(null)} sx={{ width: '100%' }}>
+        <Alert 
+          severity={toast?.severity} 
+          onClose={() => setToast(null)} 
+          variant="filled"
+          sx={{ width: '100%', boxShadow: theme.shadows[3] }}
+        >
           {toast?.message}
         </Alert>
       </Snackbar>

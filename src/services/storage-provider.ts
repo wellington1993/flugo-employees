@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, setDoc, addDoc } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '@/libs/firebase'
 import { addPendingStaff, getPendingStaffs, removePendingByEmail } from '@/services/local-storage'
 import type { Staff } from '@/features/staff/types'
@@ -9,6 +9,8 @@ export interface StaffStorage {
   list(): Promise<Staff[]>;
   create(data: StaffSchema): Promise<{ synced: boolean; error?: string }>;
   sync(staff: Staff): Promise<boolean>;
+  update(id: string, data: StaffSchema): Promise<void>;
+  delete(id: string): Promise<void>;
 }
 
 // Utilitário de Timeout
@@ -105,6 +107,16 @@ export const FirebaseStorage: StaffStorage = {
       console.error('[Firebase] Sync failed:', error.code || error.message)
       return false
     }
+  },
+
+  async update(id: string, data: StaffSchema): Promise<void> {
+    const staffDoc = doc(db, 'staffs', id)
+    await withTimeout(updateDoc(staffDoc, { ...data, updatedAt: Date.now() }))
+  },
+
+  async delete(id: string): Promise<void> {
+    const staffDoc = doc(db, 'staffs', id)
+    await withTimeout(deleteDoc(staffDoc))
   }
 }
 
@@ -119,5 +131,11 @@ export const LocalOnlyStorage: StaffStorage = {
   },
   async sync(): Promise<boolean> {
     return false
+  },
+  async update(): Promise<void> {
+    console.warn('Update not supported in LocalOnly mode')
+  },
+  async delete(): Promise<void> {
+    console.warn('Delete not supported in LocalOnly mode')
   }
 }

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { staffSchema, type StaffSchema } from '@/features/staff/validation'
-import { useCreateStaff, useUpdateStaff, useStaffs } from '@/features/staff/hooks'
+import { useCreateStaff, useStaffs } from '@/features/staff/hooks'
 
 const STEPS = ['Infos Básicas', 'Infos Profissionais']
 const STEP_FIELDS: Array<Array<keyof StaffSchema>> = [
@@ -11,31 +11,37 @@ const STEP_FIELDS: Array<Array<keyof StaffSchema>> = [
   ['department'],
 ]
 
-export function useStaffForm(staffId?: string, initialValues?: Partial<StaffSchema>, isEdit = false) {
+/**
+ * Hook customizado para gerenciar o formulário de cadastro de funcionários.
+ * Segue boas práticas de persistência de rascunho e validação multi-etapas.
+ */
+export function useStaffForm() {
   const navigate = useNavigate()
   const [activeStep, setActiveStep] = useState(0)
   const [toast, setToast] = useState<{ message: string; severity: 'success' | 'error' } | null>(null)
   const submittedRef = useRef(false)
 
-  // Hooks do TanStack Query chamados no topo (Sempre na mesma ordem)
   const { data: staffs } = useStaffs()
-  const { mutateAsync: createStaff, isPending: isCreating } = useCreateStaff()
-  const { mutateAsync: updateStaff, isPending: isUpdating } = useUpdateStaff()
+  const { mutateAsync: createStaff, isPending } = useCreateStaff()
 
-  const draftKey = isEdit ? null : 'staff_form_draft'
+  const draftKey = 'staff_form_draft'
 
-  // Memoize default values to prevent unnecessary re-renders of the form
+  // Inicialização de valores padrão com suporte a rascunho (LocalStorage)
   const defaultValues = useMemo(() => {
-    const savedDraft = draftKey ? localStorage.getItem(draftKey) : null
-    const draftData = savedDraft ? JSON.parse(savedDraft) : {}
-    
-    return {
-      name: initialValues?.name ?? draftData.name ?? '',
-      email: initialValues?.email ?? draftData.email ?? '',
-      status: initialValues?.status ?? draftData.status ?? 'ACTIVE',
-      department: initialValues?.department ?? draftData.department ?? 'TI',
-    } as StaffSchema
-  }, [initialValues, draftKey])
+    try {
+      const savedDraft = localStorage.getItem(draftKey)
+      const draftData = savedDraft ? JSON.parse(savedDraft) : {}
+      
+      return {
+        name: draftData.name ?? '',
+        email: draftData.email ?? '',
+        status: draftData.status ?? 'ACTIVE',
+        department: draftData.department ?? 'TI',
+      } as StaffSchema
+    } catch {
+      return { name: '', email: '', status: 'ACTIVE', department: 'TI' } as StaffSchema
+    }
+  }, [])
 
   const form = useForm<StaffSchema>({
     mode: 'onChange',
@@ -43,37 +49,37 @@ export function useStaffForm(staffId?: string, initialValues?: Partial<StaffSche
     defaultValues,
   })
 
-  // Sincronização de rascunho
+  // Sincronização automática do rascunho enquanto o usuário digita
   const formValues = form.watch()
   useEffect(() => {
-    if (draftKey && !submittedRef.current) {
+    if (!submittedRef.current) {
       localStorage.setItem(draftKey, JSON.stringify(formValues))
     }
-  }, [formValues, draftKey])
+  }, [formValues])
 
   const onSubmit = async (data: StaffSchema) => {
     try {
-      if (isEdit && staffId) {
-        await updateStaff({ id: staffId, data })
-        setToast({ message: 'Colaborador atualizado com sucesso!', severity: 'success' })
+      const result = await createStaff(data)
+      
+      // Limpeza imediata do rascunho após sucesso ou salvamento local (offline)
+      submittedRef.current = true
+      localStorage.removeItem(draftKey)
+      
+      if (result.synced) {
+        setToast({ message: 'Colaborador cadastrado com sucesso!', severity: 'success' })
       } else {
-        const result = await createStaff(data)
-        submittedRef.current = true
-        if (draftKey) localStorage.removeItem(draftKey)
-        
-        if (result.synced) {
-          setToast({ message: 'Colaborador cadastrado com sucesso!', severity: 'success' })
-        } else {
-          setToast({ 
-            message: `Salvo localmente. Sincronização pendente (${result.error || 'offline'})`, 
-            severity: 'success' 
-          })
-        }
+        // Feedback visual amigável para o modo offline
+        setToast({ 
+          message: `Salvo no dispositivo. Será enviado quando houver internet.`, 
+          severity: 'success' 
+        })
       }
+      
+      // Pequeno atraso para o usuário ver o feedback de sucesso antes de mudar de página
       setTimeout(() => navigate('/staffs'), 1500)
     } catch (err: unknown) {
       setToast({
-        message: err instanceof Error ? err.message : 'Erro inesperado ao salvar.',
+        message: err instanceof Error ? err.message : 'Não foi possível salvar os dados.',
         severity: 'error',
       })
     }
@@ -82,16 +88,15 @@ export function useStaffForm(staffId?: string, initialValues?: Partial<StaffSche
   const handleNext = async () => {
     const fields = STEP_FIELDS[activeStep]
     
-    // Validação rigorosa de e-mail duplicado no primeiro passo
+    // Validação de e-mail duplicado (UX Preventiva)
     if (activeStep === 0) {
-      const email = form.getValues('email')
-      // Verifica na lista atual (ignorando o rascunho sendo editado se for o caso)
-      const isDuplicate = staffs?.some(s => s.email.toLowerCase() === email.toLowerCase() && s.id !== staffId)
+      const email = form.getValues('email').trim().toLowerCase()
+      const isDuplicate = staffs?.some(s => s.email.trim().toLowerCase() === email)
       
       if (isDuplicate) {
         form.setError('email', { 
           type: 'manual', 
-          message: 'Este e-mail já está cadastrado no sistema.' 
+          message: 'Este e-mail já está em uso por outro colaborador.' 
         })
         return false
       }
@@ -100,6 +105,7 @@ export function useStaffForm(staffId?: string, initialValues?: Partial<StaffSche
     const isValid = await form.trigger(fields)
     if (!isValid) return false
 
+    // Se for o último passo, submete. Senão, avança.
     if (activeStep === STEPS.length - 1) {
       await form.handleSubmit(onSubmit)()
     } else {
@@ -120,11 +126,12 @@ export function useStaffForm(staffId?: string, initialValues?: Partial<StaffSche
     form,
     activeStep,
     steps: STEPS,
-    isPending: isCreating || isUpdating,
+    isPending,
     toast,
     setToast,
     handleNext,
     handleBack,
-    currentProgress: activeStep === 0 ? 0 : activeStep === 1 ? 50 : 100,
+    // Cálculo do progresso visual
+    currentProgress: (activeStep / STEPS.length) * 100,
   }
 }
