@@ -145,6 +145,7 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
                     label={isEdit ? 'Ativo' : 'Ativar ao criar'}
                     control={
                       <Switch
+                        {...field}
                         checked={field.value === 'ACTIVE'}
                         onChange={(e) => field.onChange(e.target.checked ? 'ACTIVE' : 'INACTIVE')}
                       />

@@ -24,10 +24,11 @@ export function getPendingStaffs(): Staff[] {
 
 export function addPendingStaff(data: StaffSchema): Staff {
   const pending = getPendingStaffs().filter(s => s.email !== data.email)
+  const localId = `local_${shortId()}`
   const staff: Staff = {
     ...data,
-    id: `local_${shortId()}`,
-    _localId: `local_${shortId()}`,
+    id: localId,
+    _localId: localId,
     _pendingSync: true,
   }
   localStorage.setItem(LS_KEY, JSON.stringify([...pending, staff]))

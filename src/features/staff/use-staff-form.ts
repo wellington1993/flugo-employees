@@ -71,9 +71,9 @@ export function useStaffForm(staffId?: string, initialValues?: Partial<StaffSche
         }
       }
       setTimeout(() => navigate('/staffs'), 1500)
-    } catch (err: any) {
+    } catch (err: unknown) {
       setToast({
-        message: err.message || 'Erro inesperado ao salvar.',
+        message: err instanceof Error ? err.message : 'Erro inesperado ao salvar.',
         severity: 'error',
       })
     }
