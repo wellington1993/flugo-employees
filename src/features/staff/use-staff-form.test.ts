@@ -60,7 +60,7 @@ describe('useStaffForm', () => {
     })
   })
 
-  describe('handleNext — validação de e-mail duplicado', () => {
+  describe('handleNext', () => {
     it('bloqueia avanço e seta erro quando e-mail já existe', async () => {
       vi.mocked(staffHooks.useStaffs).mockReturnValue({
         data: [{ id: '1', email: 'ana@empresa.com', name: 'Ana', department: 'TI', status: 'ACTIVE' }],

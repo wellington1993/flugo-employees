@@ -2,7 +2,6 @@ import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app'
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, type Firestore } from 'firebase/firestore'
 import { z } from 'zod'
 
-// 1. Schema de Validação de Ambiente
 const envSchema = z.object({
   VITE_FIREBASE_API_KEY: z.string().min(1),
   VITE_FIREBASE_PROJECT_ID: z.string().min(1),
@@ -31,10 +30,8 @@ const parseEnv = () => {
 
 const env = parseEnv()
 
-// 2. Exportação do Status de Configuração
 export const isFirebaseConfigured = !!env
 
-// 3. Inicialização Segura (Fallback para Mocks se não configurado)
 let app: FirebaseApp
 let db: Firestore
 

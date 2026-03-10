@@ -11,10 +11,6 @@ const STEP_FIELDS: Array<Array<keyof StaffSchema>> = [
   ['department'],
 ]
 
-/**
- * Hook customizado para gerenciar o formulário de cadastro de funcionários.
- * Segue boas práticas de persistência de rascunho e validação multi-etapas.
- */
 export function useStaffForm() {
   const navigate = useNavigate()
   const [activeStep, setActiveStep] = useState(0)
@@ -26,7 +22,6 @@ export function useStaffForm() {
 
   const draftKey = 'staff_form_draft'
 
-  // Inicialização de valores padrão com suporte a rascunho (LocalStorage)
   const defaultValues = useMemo(() => {
     try {
       const savedDraft = localStorage.getItem(draftKey)
@@ -49,7 +44,6 @@ export function useStaffForm() {
     defaultValues,
   })
 
-  // Sincronização automática do rascunho enquanto o usuário digita
   const formValues = form.watch()
   useEffect(() => {
     if (!submittedRef.current) {
@@ -61,21 +55,18 @@ export function useStaffForm() {
     try {
       const result = await createStaff(data)
       
-      // Limpeza imediata do rascunho após sucesso ou salvamento local (offline)
       submittedRef.current = true
       localStorage.removeItem(draftKey)
       
       if (result.synced) {
         setToast({ message: 'Colaborador cadastrado com sucesso!', severity: 'success' })
       } else {
-        // Feedback visual amigável para o modo offline
         setToast({ 
           message: `Salvo no dispositivo. Será enviado quando houver internet.`, 
           severity: 'success' 
         })
       }
       
-      // Pequeno atraso para o usuário ver o feedback de sucesso antes de mudar de página
       setTimeout(() => navigate('/staffs'), 1500)
     } catch (err: unknown) {
       setToast({
@@ -88,7 +79,6 @@ export function useStaffForm() {
   const handleNext = async () => {
     const fields = STEP_FIELDS[activeStep]
     
-    // Validação de e-mail duplicado (UX Preventiva)
     if (activeStep === 0) {
       const email = form.getValues('email').trim().toLowerCase()
       const isDuplicate = staffs?.some(s => s.email.trim().toLowerCase() === email)
@@ -105,7 +95,6 @@ export function useStaffForm() {
     const isValid = await form.trigger(fields)
     if (!isValid) return false
 
-    // Se for o último passo, submete. Senão, avança.
     if (activeStep === STEPS.length - 1) {
       await form.handleSubmit(onSubmit)()
     } else {
@@ -131,7 +120,6 @@ export function useStaffForm() {
     setToast,
     handleNext,
     handleBack,
-    // Cálculo do progresso visual
     currentProgress: (activeStep / STEPS.length) * 100,
   }
 }

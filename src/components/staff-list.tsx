@@ -37,10 +37,6 @@ const columns: { id: keyof Staff; label: string; align?: TableCellProps['align']
   { id: 'status', label: 'Status', align: 'center' },
 ]
 
-/**
- * Componente de Listagem de Colaboradores.
- * Focado em legibilidade, performance e feedback de sincronização.
- */
 export function StaffList() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
@@ -50,7 +46,6 @@ export function StaffList() {
   const { order, orderBy, createSortHandler } = useSortTable('name', setPage)
   const { pendingCount, sync } = useSyncPending()
 
-  // Sincronização automática ao carregar a página se houver itens offline
   useEffect(() => {
     if (pendingCount > 0) {
       sync().catch(console.error)
@@ -62,7 +57,6 @@ export function StaffList() {
 
   return (
     <Box sx={{ p: isMobile ? 1 : 2 }}>
-      {/* Cabeçalho da Página */}
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         alignItems={{ xs: 'stretch', sm: 'center' }}
@@ -97,7 +91,6 @@ export function StaffList() {
         </Button>
       </Stack>
 
-      {/* Tabela de Dados */}
       <TableContainer 
         component={Paper} 
         elevation={0} 
@@ -145,7 +138,6 @@ export function StaffList() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {/* Estado de Carregamento (Skeleton) */}
             {isLoading &&
               Array.from(new Array(5)).map((_, index) => (
                 <TableRow key={index}>
@@ -167,7 +159,6 @@ export function StaffList() {
                 </TableRow>
               ))}
 
-            {/* Estado de Erro */}
             {isError && (
               <TableRow>
                 <TableCell colSpan={4} align="center" sx={{ py: 8 }}>
@@ -181,7 +172,6 @@ export function StaffList() {
               </TableRow>
             )}
 
-            {/* Lista Vazia */}
             {!isLoading && !isError && !sorted.length && (
               <TableRow>
                 <TableCell colSpan={4} align="center" sx={{ py: 10 }}>
@@ -195,7 +185,6 @@ export function StaffList() {
               </TableRow>
             )}
 
-            {/* Dados da Tabela */}
             {paginated.map((row) => (
               <TableRow key={row.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                 <TableCell>
@@ -237,7 +226,7 @@ export function StaffList() {
                 </TableCell>
                 <TableCell align="center">
                   {row._pendingSync ? (
-                    <Tooltip title="Salvo localmente, aguardando conexão para enviar ao servidor">
+                    <Tooltip title="Salvo localmente, aguardando conexão">
                       <Chip
                         icon={<SyncIcon sx={{ fontSize: 14 }} />}
                         label="Sincronizando"
@@ -267,7 +256,6 @@ export function StaffList() {
           </TableBody>
         </Table>
         
-        {/* Paginação */}
         <TablePagination
           component="div"
           count={sorted.length}

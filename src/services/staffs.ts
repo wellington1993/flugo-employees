@@ -3,10 +3,8 @@ import { FirebaseStorage, LocalOnlyStorage, type StaffStorage } from './storage-
 import type { Staff } from '@/features/staff/types'
 import type { StaffSchema } from '@/features/staff/validation'
 
-// 4. Seleção Dinâmica do Provider
 const storage: StaffStorage = isFirebaseConfigured ? FirebaseStorage : LocalOnlyStorage
 
-// 5. API Pública do Serviço (Mantendo compatibilidade)
 export async function listStaffs(): Promise<Staff[]> {
   return storage.list()
 }

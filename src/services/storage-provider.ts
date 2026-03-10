@@ -4,7 +4,6 @@ import { addPendingStaff, getPendingStaffs, removePendingByEmail } from '@/servi
 import type { Staff } from '@/features/staff/types'
 import type { StaffSchema } from '@/features/staff/validation'
 
-// 1. Definição da Interface do Storage
 export interface StaffStorage {
   list(): Promise<Staff[]>;
   create(data: StaffSchema): Promise<{ synced: boolean; error?: string }>;
@@ -13,15 +12,13 @@ export interface StaffStorage {
   delete(id: string): Promise<void>;
 }
 
-// Utilitário de Timeout
 function withTimeout<T>(promise: Promise<T>, ms = 30000): Promise<T> {
   const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('Timeout: Banco de dados não respondeu.')), ms)
+    setTimeout(() => reject(new Error('Timeout de conexão com o banco.')), ms)
   )
   return Promise.race([promise, timeout])
 }
 
-// Utilitário de Log Remoto
 async function logRemoteError(context: string, error: unknown) {
   if (!isFirebaseConfigured) return
   try {
@@ -38,7 +35,6 @@ async function logRemoteError(context: string, error: unknown) {
   }
 }
 
-// 2. Implementação Firebase (Online)
 export const FirebaseStorage: StaffStorage = {
   async list(): Promise<Staff[]> {
     const pending = getPendingStaffs()
@@ -66,7 +62,7 @@ export const FirebaseStorage: StaffStorage = {
   async create(data: StaffSchema): Promise<{ synced: boolean; error?: string }> {
     if (!isFirebaseConfigured) {
       addPendingStaff(data)
-      return { synced: false, error: 'Firebase não configurado' }
+      return { synced: false, error: 'Firebase offline' }
     }
 
     try {
@@ -120,22 +116,21 @@ export const FirebaseStorage: StaffStorage = {
   }
 }
 
-// 3. Implementação Local (Offline Fallback Permanente)
 export const LocalOnlyStorage: StaffStorage = {
   async list(): Promise<Staff[]> {
     return getPendingStaffs()
   },
   async create(data: StaffSchema): Promise<{ synced: boolean; error?: string }> {
     addPendingStaff(data)
-    return { synced: false, error: 'Modo Offline' }
+    return { synced: false, error: 'Offline' }
   },
   async sync(): Promise<boolean> {
     return false
   },
   async update(): Promise<void> {
-    console.warn('Update not supported in LocalOnly mode')
+    console.warn('Update local not supported')
   },
   async delete(): Promise<void> {
-    console.warn('Delete not supported in LocalOnly mode')
+    console.warn('Delete local not supported')
   }
 }

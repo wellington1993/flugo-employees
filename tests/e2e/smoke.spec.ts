@@ -20,10 +20,10 @@ test.describe('Smoke', () => {
     await expect(page.getByLabel('E-mail')).toBeVisible()
   })
 
-  test('botão Voltar no formulário retorna para a lista', async ({ page }) => {
+  test('botão Cancelar no formulário retorna para a lista', async ({ page }) => {
     await page.goto('/staffs/new', { waitUntil: 'domcontentloaded' })
     await expect(page.getByText('Informações Básicas')).toBeVisible({ timeout: 20000 })
-    await page.getByRole('button', { name: /Voltar/i }).click()
+    await page.getByRole('button', { name: /Cancelar/i }).click()
     await expect(page).toHaveURL(/\/staffs/, { timeout: 10000 })
   })
 
