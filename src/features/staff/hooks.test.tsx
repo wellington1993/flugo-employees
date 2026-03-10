@@ -94,11 +94,48 @@ describe('Staff Hooks', () => {
   })
 
   describe('useSyncPending', () => {
-    it('deve contar pendentes corretamente', () => {
-      vi.mocked(localStorageService.getPendingStaffs).mockReturnValue([{}, {}] as any)
-      const { wrapper } = createWrapper()
+    it('deve contar pendentes corretamente', async () => {
+      const mockStaffs = [
+        { id: '1', name: 'Sincronizado', _pendingSync: false },
+        { id: '2', name: 'Pendente 1', _pendingSync: true },
+        { id: '3', name: 'Pendente 2', _pendingSync: true },
+      ]
+      vi.mocked(staffsService.listStaffs).mockResolvedValue(mockStaffs as any)
+
+      const { wrapper, queryClient } = createWrapper()
+      queryClient.setQueryData(['staffs'], mockStaffs)
+
       const { result } = renderHook(() => useSyncPending(), { wrapper })
-      expect(result.current.pendingCount).toBe(2)
+      
+      await waitFor(() => expect(result.current.pendingCount).toBe(2))
+    })
+
+    it('deve evitar sincronizações simultâneas', async () => {
+      const mockStaffs = [{ id: '1', name: 'Pendente', _pendingSync: true, email: 'p@p.com' }]
+      vi.mocked(staffsService.listStaffs).mockResolvedValue(mockStaffs as any)
+      
+      // Simula uma sincronização lenta
+      let callCount = 0
+      vi.mocked(staffsService.pushStaffToFirebase).mockImplementation(async () => {
+        callCount++
+        await new Promise(resolve => setTimeout(resolve, 100))
+        return true
+      })
+
+      const { wrapper, queryClient } = createWrapper()
+      queryClient.setQueryData(['staffs'], mockStaffs)
+
+      const { result } = renderHook(() => useSyncPending(), { wrapper })
+      
+      // Dispara múltiplas sincronizações ao mesmo tempo
+      await act(async () => {
+        result.current.sync()
+        result.current.sync()
+        result.current.sync()
+      })
+
+      // Mesmo disparando 3 vezes, deve ter chamado o serviço apenas uma vez por causa da trava
+      expect(callCount).toBe(1)
     })
   })
 })

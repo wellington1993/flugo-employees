@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   Avatar,
   Box,
@@ -14,14 +14,12 @@ import {
   TablePagination,
   TableRow,
   TableSortLabel,
-  Tooltip,
   Typography,
   Skeleton,
   useMediaQuery,
   useTheme,
   type TableCellProps,
 } from '@mui/material'
-import SyncIcon from '@mui/icons-material/Sync'
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1'
 import { visuallyHidden } from '@mui/utils'
 import { Link } from 'react-router-dom'
@@ -37,20 +35,17 @@ const columns: { id: keyof Staff; label: string; align?: TableCellProps['align']
   { id: 'status', label: 'Status', align: 'center' },
 ]
 
+
 export function StaffList() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const { data: staffs, isLoading, isError } = useStaffs()
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(10)
-  const { order, orderBy, createSortHandler } = useSortTable('name', setPage)
-  const { pendingCount, sync } = useSyncPending()
-
-  useEffect(() => {
-    if (pendingCount > 0) {
-      sync().catch(console.error)
-    }
-  }, [pendingCount, sync])
+  const { order, orderBy, createSortHandler } = useSortTable('createdAt', setPage, 'desc')
+  
+  // Sincronização automática em background
+  useSyncPending()
 
   const sorted = (staffs ?? []).slice().sort(getComparator(order, orderBy))
   const paginated = sorted.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
@@ -225,31 +220,18 @@ export function StaffList() {
                   {row.department}
                 </TableCell>
                 <TableCell align="center">
-                  {row._pendingSync ? (
-                    <Tooltip title="Salvo localmente, aguardando conexão">
-                      <Chip
-                        icon={<SyncIcon sx={{ fontSize: 14 }} />}
-                        label="Sincronizando"
-                        color="warning"
-                        size="small"
-                        variant="outlined"
-                        sx={{ fontWeight: 600, borderStyle: 'dashed' }}
-                      />
-                    </Tooltip>
-                  ) : (
-                    <Chip
-                      label={row.status === 'ACTIVE' ? 'Ativo' : 'Inativo'}
-                      color={row.status === 'ACTIVE' ? 'success' : 'default'}
-                      size="small"
-                      variant="filled"
-                      sx={{ 
-                        fontWeight: 700, 
-                        fontSize: 11,
-                        bgcolor: row.status === 'ACTIVE' ? 'success.light' : 'grey.100',
-                        color: row.status === 'ACTIVE' ? 'success.dark' : 'grey.600'
-                      }}
-                    />
-                  )}
+                  <Chip
+                    label={row.status === 'ACTIVE' ? 'Ativo' : 'Inativo'}
+                    color={row.status === 'ACTIVE' ? 'success' : 'default'}
+                    size="small"
+                    variant="filled"
+                    sx={{ 
+                      fontWeight: 700, 
+                      fontSize: 11,
+                      bgcolor: row.status === 'ACTIVE' ? 'success.light' : 'grey.100',
+                      color: row.status === 'ACTIVE' ? 'success.dark' : 'grey.600'
+                    }}
+                  />
                 </TableCell>
               </TableRow>
             ))}

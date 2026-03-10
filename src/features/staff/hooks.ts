@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createStaff, listStaffs, pushStaffToFirebase, updateStaff, deleteStaff } from '@/services/staffs'
-import { getPendingStaffs } from '@/services/local-storage'
 import type { StaffSchema } from './validation'
 import type { Staff } from './types'
+import { useEffect, useRef } from 'react'
+import { useConnectivity } from '@/hooks/use-connectivity'
 
 export function useStaffs() {
   return useQuery({
@@ -11,43 +12,35 @@ export function useStaffs() {
   })
 }
 
+type CreateStaffReturn = Awaited<ReturnType<typeof createStaff>>
+
 export function useCreateStaff() {
   const queryClient = useQueryClient()
   
-  return useMutation({
+  return useMutation<
+    CreateStaffReturn,
+    Error,
+    StaffSchema,
+    { previousStaffs: Staff[] | undefined }
+  >({
     mutationFn: (data: StaffSchema) => createStaff(data),
     onMutate: async (newStaff) => {
       await queryClient.cancelQueries({ queryKey: ['staffs'] })
       const previousStaffs = queryClient.getQueryData<Staff[]>(['staffs'])
 
-      queryClient.setQueryData(['staffs'], (old: Staff[] | undefined) => {
-        const optimisticEntry: Staff = {
-          ...newStaff,
-          id: `temp-${Date.now()}`,
-          _localId: `temp-${Date.now()}`,
-          _pendingSync: true,
-          createdAt: Date.now()
-        }
-        return old ? [optimisticEntry, ...old] : [optimisticEntry]
+      queryClient.setQueryData(['staffs'], (old: Staff[] = []) => {
+        const optimisticEntry: Staff = { ...newStaff, id: `temp-${Date.now()}`, _localId: `temp-${Date.now()}`, _pendingSync: true, createdAt: Date.now() }
+        return [optimisticEntry, ...old]
       })
 
       return { previousStaffs }
     },
-    onSuccess: (result, newStaff) => {
-      if (result.synced) {
-        // Online: Firebase é a fonte da verdade, busca os dados reais
-        queryClient.invalidateQueries({ queryKey: ['staffs'] })
-      } else {
-        // Offline: substitui a entrada temporária pelo registro real do localStorage
-        // sem disparar um refetch (Firebase está indisponível)
-        const pendingEntry = getPendingStaffs().find(s => s.email === newStaff.email)
-        if (pendingEntry) {
-          queryClient.setQueryData(['staffs'], (old: Staff[] | undefined) => {
-            const withoutTemp = (old || []).filter(s => !s.id.startsWith('temp-'))
-            return [pendingEntry, ...withoutTemp]
-          })
-        }
-      }
+    onSuccess: (result) => {
+      queryClient.setQueryData(['staffs'], (old: Staff[] = []) => {
+        const withoutTemp = old.filter(s => !s.id.startsWith('temp-'))
+        const final = [result.staff, ...withoutTemp.filter(s => s.id !== result.staff.id)]
+        return final
+      })
     },
     onError: (_err, _newStaff, context) => {
       if (context?.previousStaffs) {
@@ -79,22 +72,48 @@ export function useDeleteStaff() {
 
 export function useSyncPending() {
   const queryClient = useQueryClient()
-  const pending = getPendingStaffs()
-  const pendingCount = pending.length
+  const isOnline = useConnectivity()
+  const { data: staffs } = useStaffs()
+  const pendingCount = staffs?.filter(s => s._pendingSync).length ?? 0
+  const syncingRef = useRef(false)
 
   const sync = async () => {
-    if (pendingCount === 0) return
+    if (syncingRef.current) return
+    const pending = staffs?.filter(s => s._pendingSync)
+    if (!pending || pending.length === 0) return
+    
+    syncingRef.current = true
     let anySynced = false
+    let hasError = false
 
-    for (const staff of pending) {
-      const ok = await pushStaffToFirebase(staff)
-      if (ok) anySynced = true
+    try {
+      for (const staff of pending) {
+        const ok = await pushStaffToFirebase(staff)
+        if (ok) {
+          anySynced = true
+        } else {
+          hasError = true
+        }
+      }
+    } catch (err) {
+      if (import.meta.env.DEV) console.error('Erro crítico na sincronização:', err)
+      hasError = true
+    } finally {
+      syncingRef.current = false
     }
 
     if (anySynced) {
       queryClient.invalidateQueries({ queryKey: ['staffs'] })
     }
+
+    return { anySynced, hasError }
   }
+
+  useEffect(() => {
+    if (isOnline && pendingCount > 0) {
+      sync()
+    }
+  }, [isOnline, pendingCount])
 
   return { pendingCount, sync }
 }
