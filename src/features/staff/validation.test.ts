@@ -53,6 +53,48 @@ describe('staffSchema', () => {
     expect(staffSchema.safeParse({ ...validData, status: 'INACTIVE' }).success).toBe(true)
   })
 
+  it('exibe mensagem "O nome é obrigatório" para nome vazio', () => {
+    const result = staffSchema.safeParse({ ...validData, name: '' })
+    expect(result.success).toBe(false)
+    const issue = result.error?.issues.find(i => i.path[0] === 'name')
+    expect(issue?.message).toBe('O nome é obrigatório')
+  })
+
+  it('exibe mensagem de tamanho mínimo do nome', () => {
+    const result = staffSchema.safeParse({ ...validData, name: 'An' })
+    expect(result.success).toBe(false)
+    const issue = result.error?.issues.find(i => i.path[0] === 'name')
+    expect(issue?.message).toBe('O nome deve ter pelo menos 3 caracteres')
+  })
+
+  it('exibe mensagem "O e-mail é obrigatório" para e-mail vazio', () => {
+    const result = staffSchema.safeParse({ ...validData, email: '' })
+    expect(result.success).toBe(false)
+    const issue = result.error?.issues.find(i => i.path[0] === 'email')
+    expect(issue?.message).toBe('O e-mail é obrigatório')
+  })
+
+  it('exibe mensagem de formato inválido para e-mail malformado', () => {
+    const result = staffSchema.safeParse({ ...validData, email: 'nao-e-email' })
+    expect(result.success).toBe(false)
+    const issue = result.error?.issues.find(i => i.path[0] === 'email')
+    expect(issue?.message).toContain('e-mail válido')
+  })
+
+  it('exibe mensagem para departamento inválido', () => {
+    const result = staffSchema.safeParse({ ...validData, department: 'Inexistente' })
+    expect(result.success).toBe(false)
+    const issue = result.error?.issues.find(i => i.path[0] === 'department')
+    expect(issue?.message).toBe('Selecione um departamento')
+  })
+
+  it('exibe mensagem para status inválido', () => {
+    const result = staffSchema.safeParse({ ...validData, status: 'PENDING' })
+    expect(result.success).toBe(false)
+    const issue = result.error?.issues.find(i => i.path[0] === 'status')
+    expect(issue?.message).toBe('Selecione um status válido')
+  })
+
   it('rejeita status não permitido', () => {
     const result = staffSchema.safeParse({ ...validData, status: 'PENDING' })
     expect(result.success).toBe(false)

@@ -7,6 +7,7 @@ import * as useStaffFormHook from '@/features/staff/use-staff-form'
 import { useForm } from 'react-hook-form'
 import { BrowserRouter } from 'react-router-dom'
 import { renderHook } from '@testing-library/react'
+import React from 'react'
 
 // Mock do hook customizado
 vi.mock('@/features/staff/use-staff-form', () => ({

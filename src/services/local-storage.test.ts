@@ -52,6 +52,11 @@ describe('addPendingStaff', () => {
     expect(result.id).toMatch(/^local_/)
   })
 
+  it('id e _localId são idênticos no mesmo registro', () => {
+    const result = addPendingStaff(staff1)
+    expect(result.id).toBe(result._localId)
+  })
+
   it('substitui entrada existente com o mesmo e-mail', () => {
     addPendingStaff(staff1)
     addPendingStaff({ ...staff1, name: 'Ana Atualizada' })

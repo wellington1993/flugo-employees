@@ -2,11 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { StaffList } from './staff-list'
 import { ThemeProvider, createTheme } from '@mui/material'
-import { BrowserRouter } from 'react-router-dom'
 import * as staffHooks from '@/features/staff/hooks'
+import { BrowserRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import React from 'react'
 
-// Mock dos hooks
 vi.mock('@/features/staff/hooks', () => ({
   useStaffs: vi.fn(),
   useSyncPending: vi.fn(),
@@ -14,13 +14,17 @@ vi.mock('@/features/staff/hooks', () => ({
 }))
 
 const theme = createTheme()
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+})
+
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(
-    <ThemeProvider theme={theme}>
+    <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        {ui}
+        <ThemeProvider theme={theme}>{ui}</ThemeProvider>
       </BrowserRouter>
-    </ThemeProvider>
+    </QueryClientProvider>
   )
 }
 
@@ -29,38 +33,27 @@ describe('StaffList Component', () => {
     vi.clearAllMocks()
     vi.mocked(staffHooks.useSyncPending).mockReturnValue({
       pendingCount: 0,
-      sync: vi.fn(),
+      sync: vi.fn().mockResolvedValue(true),
     })
-    vi.mocked(staffHooks.useDeleteStaff).mockReturnValue({
-      mutateAsync: vi.fn(),
-      isPending: false,
-    } as any)
   })
 
   it('deve exibir Skeletons durante o carregamento', () => {
     vi.mocked(staffHooks.useStaffs).mockReturnValue({
-      data: undefined,
       isLoading: true,
-      isError: false,
     } as any)
 
     renderWithProviders(<StaffList />)
-    
-    // MUI Skeleton usa a classe MuiSkeleton-root
-    const skeletons = document.querySelectorAll('.MuiSkeleton-root')
-    expect(skeletons.length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('row')).toHaveLength(6) // Header + 5 skeletons
   })
 
   it('deve exibir mensagem de erro quando falhar', () => {
     vi.mocked(staffHooks.useStaffs).mockReturnValue({
-      data: undefined,
-      isLoading: false,
       isError: true,
+      isLoading: false,
     } as any)
 
     renderWithProviders(<StaffList />)
-    
-    expect(screen.getByText(/Não foi possível carregar os colaboradores/i)).toBeDefined()
+    expect(screen.getByText(/Não conseguimos carregar a lista/i)).toBeInTheDocument()
   })
 
   it('deve exibir mensagem de lista vazia', () => {
@@ -71,23 +64,26 @@ describe('StaffList Component', () => {
     } as any)
 
     renderWithProviders(<StaffList />)
-    
-    expect(screen.getByText(/Nenhum colaborador cadastrado ainda/i)).toBeDefined()
+    expect(screen.getByText(/Nenhum colaborador encontrado/i)).toBeInTheDocument()
   })
 
   it('deve renderizar a tabela com dados dos colaboradores', () => {
-    const mockStaffs = [
-      { id: '1', name: 'João Silva', email: 'joao@test.com', department: 'TI', status: 'ACTIVE' }
-    ]
     vi.mocked(staffHooks.useStaffs).mockReturnValue({
-      data: mockStaffs,
+      data: [
+        {
+          id: '1',
+          name: 'João Silva',
+          email: 'joao@teste.com',
+          department: 'TI',
+          status: 'ACTIVE',
+        },
+      ],
       isLoading: false,
       isError: false,
     } as any)
 
     renderWithProviders(<StaffList />)
-    
-    expect(screen.getByText('João Silva')).toBeDefined()
-    expect(screen.getByText('joao@test.com')).toBeDefined()
+    expect(screen.getByText('João Silva')).toBeInTheDocument()
+    expect(screen.getByText('joao@teste.com')).toBeInTheDocument()
   })
 })
