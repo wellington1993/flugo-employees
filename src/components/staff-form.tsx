@@ -1,34 +1,24 @@
-import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useForm, Controller } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Alert,
   Box,
   Button,
   FormControlLabel,
   LinearProgress,
-  MenuItem,
   Snackbar,
   Stack,
   Step,
   StepLabel,
   Stepper,
   Switch,
-  TextField,
   Typography,
 } from '@mui/material'
 import CheckIcon from '@mui/icons-material/Check'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import { staffSchema, departments, type StaffSchema } from '@/features/staff/validation'
-import { useCreateStaff, useUpdateStaff, useStaffs } from '@/features/staff/hooks'
-
-const steps = ['Infos Básicas', 'Infos Profissionais']
-
-const stepFields: Array<Array<keyof StaffSchema>> = [
-  ['name', 'email', 'status'],
-  ['department'],
-]
+import { Controller } from 'react-hook-form'
+import { departments, type StaffSchema } from '@/features/staff/validation'
+import { useStaffForm } from '@/features/staff/use-staff-form'
+import { FlugoTextField } from './form/flugo-text-field'
+import { FlugoSelect } from './form/flugo-select'
 
 type StaffFormProps = {
   staffId?: string
@@ -37,76 +27,20 @@ type StaffFormProps = {
 }
 
 export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormProps) {
-  const navigate = useNavigate()
-  const [activeStep, setActiveStep] = useState(0)
-  const [toast, setToast] = useState<{ message: string; severity: 'success' | 'error' } | null>(null)
+  const {
+    form,
+    activeStep,
+    steps,
+    isPending,
+    toast,
+    setToast,
+    handleNext,
+    handleBack,
+    currentProgress,
+    existingStaffs
+  } = useStaffForm(staffId, initialValues, isEdit)
 
-  const draftKey = isEdit ? null : 'staff_form_draft'
-  const submittedRef = useRef(false)
-
-  const { control, handleSubmit, trigger, watch } = useForm<StaffSchema>({
-    mode: 'onChange',
-    resolver: zodResolver(staffSchema),
-    defaultValues: initialValues ?? (draftKey ? JSON.parse(localStorage.getItem(draftKey) || '{}') : undefined) ?? {
-      name: '',
-      email: '',
-      status: 'ACTIVE',
-      department: 'TI',
-    },
-  })
-
-  const formValues = watch()
-  useEffect(() => {
-    if (draftKey && !submittedRef.current) localStorage.setItem(draftKey, JSON.stringify(formValues))
-  }, [formValues, draftKey])
-
-  const { mutateAsync: createStaff, isPending: isCreating } = useCreateStaff()
-  const { mutateAsync: updateStaff, isPending: isUpdating } = useUpdateStaff()
-  const { data: existingStaffs } = useStaffs()
-  const isPending = isCreating || isUpdating
-
-  const onSubmit = async (data: StaffSchema) => {
-    try {
-      if (isEdit && staffId) {
-        await updateStaff({ id: staffId, data })
-        setToast({ message: 'Colaborador atualizado com sucesso!', severity: 'success' })
-      } else {
-        await createStaff(data)
-        submittedRef.current = true
-        if (draftKey) localStorage.removeItem(draftKey)
-        setToast({ message: 'Colaborador cadastrado com sucesso!', severity: 'success' })
-      }
-      setTimeout(() => navigate('/staffs'), 1500)
-    } catch (err) {
-      setToast({
-        message: err instanceof Error ? err.message : 'Erro inesperado ao salvar.',
-        severity: 'error',
-      })
-    }
-    }
-
-    const isLastStep = activeStep === steps.length - 1
-
-  const handleNext = async () => {
-    const valid = await trigger(stepFields[activeStep])
-    if (!valid) return
-
-    if (isLastStep) {
-      await handleSubmit(onSubmit)()
-      return
-    }
-
-    setActiveStep((prev) => prev + 1)
-  }
-
-  const handleBack = () => {
-    if (activeStep === 0) {
-      navigate('/staffs')
-      return
-    }
-    setActiveStep((prev) => prev - 1)
-  }
-  const currentProgress = activeStep === 0 ? 0 : activeStep === 1 ? 50 : 100
+  const isLastStep = activeStep === steps.length - 1
 
   return (
     <Box minHeight="50vh" display="flex" flexDirection="column" gap={3}>
@@ -163,12 +97,11 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
             <Box sx={{ display: activeStep === 0 ? 'flex' : 'none', flexDirection: 'column', gap: 2 }}>
               <Controller
                 name="name"
-                control={control}
+                control={form.control}
                 render={({ field, fieldState }) => (
-                  <TextField
+                  <FlugoTextField
                     {...field}
                     label="Título"
-                    fullWidth
                     error={!!fieldState.error}
                     helperText={fieldState.error?.message}
                   />
@@ -176,7 +109,7 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
               />
               <Controller
                 name="email"
-                control={control}
+                control={form.control}
                 rules={{
                   validate: (value) => {
                     if (isEdit) return true
@@ -185,11 +118,10 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
                   },
                 }}
                 render={({ field, fieldState }) => (
-                  <TextField
+                  <FlugoTextField
                     {...field}
                     label="E-mail"
                     type="email"
-                    fullWidth
                     placeholder="ex: joao@empresa.com"
                     disabled={isEdit}
                     error={!!fieldState.error}
@@ -199,7 +131,7 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
               />
               <Controller
                 name="status"
-                control={control}
+                control={form.control}
                 render={({ field }) => (
                   <FormControlLabel
                     label={isEdit ? 'Ativo' : 'Ativar ao criar'}
@@ -218,22 +150,15 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
             <Box sx={{ display: activeStep === 1 ? 'block' : 'none' }}>
               <Controller
                 name="department"
-                control={control}
+                control={form.control}
                 render={({ field, fieldState }) => (
-                  <TextField
+                  <FlugoSelect
                     {...field}
-                    select
                     label="Departamento"
-                    fullWidth
+                    options={departments}
                     error={!!fieldState.error}
                     helperText={fieldState.error?.message}
-                  >
-                    {departments.map((dep) => (
-                      <MenuItem key={dep} value={dep}>
-                        {dep}
-                      </MenuItem>
-                    ))}
-                  </TextField>
+                  />
                 )}
               />
             </Box>

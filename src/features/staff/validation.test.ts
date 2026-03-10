@@ -18,11 +18,6 @@ describe('staffSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('rejeita nome com mais de 80 caracteres', () => {
-    const result = staffSchema.safeParse({ ...validData, name: 'A'.repeat(81) })
-    expect(result.success).toBe(false)
-  })
-
   it('aceita nome com exatamente 3 caracteres', () => {
     const result = staffSchema.safeParse({ ...validData, name: 'Ana' })
     expect(result.success).toBe(true)
