@@ -4,12 +4,12 @@ import userEvent from '@testing-library/user-event'
 import { StaffForm } from './staff-form'
 import { ThemeProvider, createTheme } from '@mui/material'
 import * as useStaffFormHook from '@/features/staff/use-staff-form'
-import { useForm } from 'react-hook-form'
+import { useForm, type UseFormReturn } from 'react-hook-form'
 import { BrowserRouter } from 'react-router-dom'
 import { renderHook } from '@testing-library/react'
-import React from 'react'
+import type { StaffSchema } from '@/features/staff/validation'
 
-// Mock do hook customizado
+// Mock the custom hook
 vi.mock('@/features/staff/use-staff-form', () => ({
   useStaffForm: vi.fn(),
 }))
@@ -26,7 +26,7 @@ describe('StaffForm Keyboard Navigation', () => {
   })
 
   const renderForm = (activeStep = 0) => {
-    const { result } = renderHook(() => useForm({
+    const { result } = renderHook(() => useForm<StaffSchema>({
       defaultValues: {
         name: '',
         email: '',
@@ -35,10 +35,11 @@ describe('StaffForm Keyboard Navigation', () => {
       }
     }))
 
+    // Provide a valid return value for the mocked useStaffForm
     vi.mocked(useStaffFormHook.useStaffForm).mockReturnValue({
-      form: result.current as any,
+      form: result.current as unknown as UseFormReturn<StaffSchema, any, undefined>,
       activeStep,
-      steps: ['Step 1', 'Step 2'],
+      steps: ['Passo 1', 'Passo 2'],
       isPending: false,
       toast: null,
       setToast: mockSetToast,
@@ -75,8 +76,9 @@ describe('StaffForm Keyboard Navigation', () => {
   it('deve focar no campo Departamento ao carregar o passo 2', async () => {
     renderForm(1)
     const input = document.querySelector('input[name="department"]')
-    // In step 2, the department select should be focused
-    expect(document.activeElement?.getAttribute('name') || document.activeElement?.parentElement?.querySelector('input')?.getAttribute('name')).toBe('department')
+    // In step 2, the department select should have focus effect
+    expect(document.activeElement?.getAttribute('name') || 
+           document.activeElement?.parentElement?.querySelector('input')?.getAttribute('name')).toBe('department')
   })
 
   it('deve chamar handleNext via submissão de formulário no passo 2', async () => {
