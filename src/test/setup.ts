@@ -28,7 +28,7 @@ class LocalStorageMock {
   }
 }
 
-Object.defineProperty(global, 'localStorage', {
+Object.defineProperty(globalThis, 'localStorage', {
   value: new LocalStorageMock(),
   writable: true,
 })
