@@ -87,7 +87,7 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
 
     const isLastStep = activeStep === steps.length - 1
 
-    const handleNext = async () => {
+  const handleNext = async () => {
     const valid = await trigger(stepFields[activeStep])
     if (!valid) return
 
@@ -97,15 +97,15 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
     }
 
     setActiveStep((prev) => prev + 1)
-    }
+  }
 
-    const handleBack = () => {
+  const handleBack = () => {
     if (activeStep === 0) {
       navigate('/staffs')
       return
     }
     setActiveStep((prev) => prev - 1)
-    }
+  }
   const currentProgress = activeStep === 0 ? 0 : activeStep === 1 ? 50 : 100
 
   return (
