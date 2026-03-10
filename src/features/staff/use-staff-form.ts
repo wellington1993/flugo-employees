@@ -82,12 +82,17 @@ export function useStaffForm(staffId?: string, initialValues?: Partial<StaffSche
   const handleNext = async () => {
     const fields = STEP_FIELDS[activeStep]
     
-    // Validação manual de e-mail duplicado apenas se for novo registro
-    if (activeStep === 0 && !isEdit) {
+    // Validação rigorosa de e-mail duplicado no primeiro passo
+    if (activeStep === 0) {
       const email = form.getValues('email')
-      const isDuplicate = staffs?.some(s => s.email === email && !s._pendingSync)
+      // Verifica na lista atual (ignorando o rascunho sendo editado se for o caso)
+      const isDuplicate = staffs?.some(s => s.email.toLowerCase() === email.toLowerCase() && s.id !== staffId)
+      
       if (isDuplicate) {
-        form.setError('email', { message: 'Este e-mail já está em uso no servidor.' })
+        form.setError('email', { 
+          type: 'manual', 
+          message: 'Este e-mail já está cadastrado no sistema.' 
+        })
         return false
       }
     }
