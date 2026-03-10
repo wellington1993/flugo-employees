@@ -2,46 +2,18 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Flugo Employees</title>
-    <script>
-      // Restore URL after 404.html redirect (GitHub Pages SPA routing)
-      ;(function () {
-        var redirect = sessionStorage.redirect
-        delete sessionStorage.redirect
-        if (redirect && redirect !== location.href) {
-          history.replaceState(null, null, redirect)
-        }
-        // Handle ?p= query param from 404.html
-        var l = window.location
-        if (l.search[1] === 'p') {
-          var decoded = l.search
-            .slice(1)
-            .split('&')
-            .reduce(function (memo, item) {
-              var parts = item.split('=')
-              memo[parts[0]] = parts.slice(1).join('=').replace(/~and~/g, '&')
-              return memo
-            }, {})
-          if (decoded.p !== undefined) {
-            history.replaceState(
-              null,
-              null,
-              l.pathname.slice(0, -1) +
-                (decoded.p ? '/' + decoded.p : '') +
-                (decoded.q ? '?' + decoded.q : '') +
-                l.hash
-            )
-          }
-        }
-      })()
-    </script>
-    <script type="module" crossorigin src="/flugo-employees/assets/index-BrpV0zSq.js"></script>
-    <link rel="modulepreload" crossorigin href="/flugo-employees/assets/query-Da2PC648.js">
-    <link rel="modulepreload" crossorigin href="/flugo-employees/assets/mui-Bos_cflS.js">
-    <link rel="modulepreload" crossorigin href="/flugo-employees/assets/react-core-CE3sK18j.js">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#1976d2" />
+    <meta name="description" content="Gerenciador de colaboradores Flugo - Performance e Resiliência Offline" />
+    <link rel="apple-touch-icon" href="/flugo-employees/pwa-192x192.png" />
+    <link rel="icon" type="image/svg+xml" href="/flugo-employees/vite.svg" />
+    <title>Flugo Staff Manager</title>
+    <script type="module" crossorigin src="/flugo-employees/assets/index-BAdsZqTw.js"></script>
+    <link rel="modulepreload" crossorigin href="/flugo-employees/assets/query-9mlRG_8V.js">
+    <link rel="modulepreload" crossorigin href="/flugo-employees/assets/mui-D6FE76Wp.js">
+    <link rel="modulepreload" crossorigin href="/flugo-employees/assets/react-core-SH8NVhDW.js">
     <link rel="stylesheet" crossorigin href="/flugo-employees/assets/index-BjTn2-lj.css">
-  </head>
+  <link rel="manifest" href="/flugo-employees/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/flugo-employees/registerSW.js"></script></head>
   <body>
     <div id="root"></div>
   </body>
