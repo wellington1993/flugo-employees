@@ -42,13 +42,12 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
     handleNext: handleNextHook,
     handleBack,
     currentProgress,
-    existingStaffs
   } = useStaffForm(staffId, initialValues, isEdit)
 
   const handleNext = async () => {
     const ok = await handleNextHook()
     if (!ok) {
-      setToast({ message: 'Por favor, corrija os erros no formulário.', severity: 'error' })
+      setToast({ message: 'Verifique os campos marcados em vermelho.', severity: 'error' })
     }
   }
 
@@ -109,7 +108,7 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
             {activeStep === 0 ? 'Informações Básicas' : 'Informações Profissionais'}
           </Typography>
 
-          <form>
+          <form onSubmit={(e) => e.preventDefault()}>
             <Box sx={{ display: activeStep === 0 ? 'flex' : 'none', flexDirection: 'column', gap: 2 }}>
               <Controller
                 name="name"
@@ -126,13 +125,6 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
               <Controller
                 name="email"
                 control={form.control}
-                rules={{
-                  validate: (value) => {
-                    if (isEdit) return true
-                    const duplicate = existingStaffs?.some(s => s.email === value)
-                    return duplicate ? 'E-mail já cadastrado' : true
-                  },
-                }}
                 render={({ field, fieldState }) => (
                   <FlugoTextField
                     {...field}
@@ -187,8 +179,7 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
           onClick={handleBack}
           startIcon={<ArrowBackIcon />}
           disabled={isPending}
-          fullWidth={isMobile}
-          sx={{ borderColor: 'divider', color: 'text.secondary', mr: isMobile ? 1 : 0 }}
+          sx={{ borderColor: 'divider', color: 'text.secondary' }}
         >
           Voltar
         </Button>
@@ -196,8 +187,6 @@ export function StaffForm({ staffId, initialValues, isEdit = false }: StaffFormP
           variant="contained"
           onClick={handleNext}
           disabled={isPending}
-          fullWidth={isMobile}
-          sx={{ ml: isMobile ? 1 : 0 }}
         >
           {isLastStep ? (isPending ? 'Salvando...' : isEdit ? 'Salvar' : 'Concluir') : 'Próximo'}
         </Button>

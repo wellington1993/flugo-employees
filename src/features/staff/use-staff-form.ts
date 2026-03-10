@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -15,22 +15,27 @@ export function useStaffForm(staffId?: string, initialValues?: Partial<StaffSche
   const navigate = useNavigate()
   const [activeStep, setActiveStep] = useState(0)
   const [toast, setToast] = useState<{ message: string; severity: 'success' | 'error' } | null>(null)
-  
-  const draftKey = isEdit ? null : 'staff_form_draft'
   const submittedRef = useRef(false)
 
-  const { data: existingStaffs } = useStaffs()
+  // Hooks do TanStack Query chamados no topo (Sempre na mesma ordem)
+  const { data: staffs } = useStaffs()
   const { mutateAsync: createStaff, isPending: isCreating } = useCreateStaff()
   const { mutateAsync: updateStaff, isPending: isUpdating } = useUpdateStaff()
 
-  const defaultValues: StaffSchema = {
-    name: '',
-    email: '',
-    status: 'ACTIVE',
-    department: 'TI',
-    ...initialValues,
-    ...(draftKey ? JSON.parse(localStorage.getItem(draftKey) || '{}') : {}),
-  }
+  const draftKey = isEdit ? null : 'staff_form_draft'
+
+  // Memoize default values to prevent unnecessary re-renders of the form
+  const defaultValues = useMemo(() => {
+    const savedDraft = draftKey ? localStorage.getItem(draftKey) : null
+    const draftData = savedDraft ? JSON.parse(savedDraft) : {}
+    
+    return {
+      name: initialValues?.name ?? draftData.name ?? '',
+      email: initialValues?.email ?? draftData.email ?? '',
+      status: initialValues?.status ?? draftData.status ?? 'ACTIVE',
+      department: initialValues?.department ?? draftData.department ?? 'TI',
+    } as StaffSchema
+  }, [initialValues, draftKey])
 
   const form = useForm<StaffSchema>({
     mode: 'onChange',
@@ -38,7 +43,7 @@ export function useStaffForm(staffId?: string, initialValues?: Partial<StaffSche
     defaultValues,
   })
 
-  // Persistência de rascunho
+  // Sincronização de rascunho
   const formValues = form.watch()
   useEffect(() => {
     if (draftKey && !submittedRef.current) {
@@ -76,8 +81,18 @@ export function useStaffForm(staffId?: string, initialValues?: Partial<StaffSche
 
   const handleNext = async () => {
     const fields = STEP_FIELDS[activeStep]
-    const isValid = await form.trigger(fields)
     
+    // Validação manual de e-mail duplicado apenas se for novo registro
+    if (activeStep === 0 && !isEdit) {
+      const email = form.getValues('email')
+      const isDuplicate = staffs?.some(s => s.email === email && !s._pendingSync)
+      if (isDuplicate) {
+        form.setError('email', { message: 'Este e-mail já está em uso no servidor.' })
+        return false
+      }
+    }
+
+    const isValid = await form.trigger(fields)
     if (!isValid) return false
 
     if (activeStep === STEPS.length - 1) {
@@ -106,6 +121,5 @@ export function useStaffForm(staffId?: string, initialValues?: Partial<StaffSche
     handleNext,
     handleBack,
     currentProgress: activeStep === 0 ? 0 : activeStep === 1 ? 50 : 100,
-    existingStaffs
   }
 }
