@@ -1,4 +1,3 @@
-/// <reference types="@testing-library/jest-dom" />
 import '@testing-library/jest-dom'
 
 class LocalStorageMock {
@@ -29,7 +28,7 @@ class LocalStorageMock {
   }
 }
 
-Object.defineProperty(globalThis, 'localStorage', {
+Object.defineProperty(global, 'localStorage', {
   value: new LocalStorageMock(),
   writable: true,
 })
