@@ -16,13 +16,9 @@ export const staffSchema = z.object({
     .min(1, 'O e-mail é obrigatório')
     .email('Insira um formato de e-mail válido (ex: nome@empresa.com)'),
   
-  department: z.enum(departments, {
-    errorMap: () => ({ message: 'Selecione um departamento da lista' }),
-  }),
+  department: z.enum(departments),
   
-  status: z.enum(['ACTIVE', 'INACTIVE'], {
-    errorMap: () => ({ message: 'Selecione um status válido' }),
-  }),
+  status: z.enum(['ACTIVE', 'INACTIVE']),
 })
 
 export type StaffSchema = z.infer<typeof staffSchema>
