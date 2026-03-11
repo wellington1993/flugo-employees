@@ -1,12 +1,17 @@
 import { test, expect } from '@playwright/test'
+import { cleanupTestRecords } from './utils/cleanup'
+
+test.afterEach(async () => {
+  await cleanupTestRecords()
+})
 
 test.describe('Listagem de colaboradores', () => {
   test('exibe tabela com as colunas corretas', async ({ page }) => {
     await page.goto('/staffs')
     await expect(page.getByRole('heading', { name: 'Colaboradores' })).toBeVisible({ timeout: 15000 })
     await expect(page.getByRole('table')).toBeVisible()
-    await expect(page.getByRole('columnheader', { name: 'Nome' })).toBeVisible()
-    await expect(page.getByRole('columnheader', { name: 'Email' })).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: 'Colaborador' })).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: 'E-mail' })).toBeVisible()
     await expect(page.getByRole('columnheader', { name: 'Departamento' })).toBeVisible()
     await expect(page.getByRole('columnheader', { name: 'Status' })).toBeVisible()
   })
@@ -23,18 +28,19 @@ test.describe('Cadastro de colaborador', () => {
     const name = `Teste Ativo ${suffix}`
     const email = `ativo-${suffix}@empresa.com`
 
-    await page.getByRole('button', { name: /Novo Colaborador/i }).click()
-    await page.getByLabel('Nome').fill(name)
-    await page.getByLabel('E-mail').fill(email)
+    await page.getByRole('link', { name: /novo colaborador/i }).click()
+    await page.getByLabel(/nome completo/i).fill(name)
+    await page.getByLabel(/e-mail corporativo/i).fill(email)
     await page.getByRole('button', { name: /Próximo/i }).click()
-    await page.getByLabel('Departamento').click()
-    await page.getByRole('option', { name: 'TI' }).click()
-    await page.getByRole('button', { name: /Concluir/i }).click()
+    await page.getByLabel(/selecione o departamento/i).click()
+    await page.getByRole('option', { name: 'TI', exact: true }).click()
+    await page.getByRole('button', { name: /finalizar cadastro/i }).click()
 
     await expect(page.getByText(/sucesso/i)).toBeVisible({ timeout: 15000 })
     await expect(page).toHaveURL(/\/staffs/, { timeout: 10000 })
-    await expect(page.getByText(name)).toBeVisible()
-    await expect(page.getByText('Ativo')).toBeVisible()
+    const newRow = page.locator('tr', { hasText: name })
+    await expect(newRow).toBeVisible()
+    await expect(newRow.locator('td').last()).toHaveText(/^Ativo$/)
   })
 
   test('cria colaborador com status Inativo', async ({ page }) => {
@@ -42,14 +48,14 @@ test.describe('Cadastro de colaborador', () => {
     const name = `Teste Inativo ${suffix}`
     const email = `inativo-${suffix}@empresa.com`
 
-    await page.getByRole('button', { name: /Novo Colaborador/i }).click()
-    await page.getByLabel('Nome').fill(name)
-    await page.getByLabel('E-mail').fill(email)
+    await page.getByRole('link', { name: /novo colaborador/i }).click()
+    await page.getByLabel(/nome completo/i).fill(name)
+    await page.getByLabel(/e-mail corporativo/i).fill(email)
     await page.getByRole('switch').click()
     await page.getByRole('button', { name: /Próximo/i }).click()
-    await page.getByLabel('Departamento').click()
-    await page.getByRole('option', { name: 'Design' }).click()
-    await page.getByRole('button', { name: /Concluir/i }).click()
+    await page.getByLabel(/selecione o departamento/i).click()
+    await page.getByRole('option', { name: 'Design', exact: true }).click()
+    await page.getByRole('button', { name: /finalizar cadastro/i }).click()
 
     await expect(page.getByText(/sucesso|local/i)).toBeVisible({ timeout: 15000 })
     await expect(page).toHaveURL(/\/staffs/, { timeout: 10000 })
@@ -57,9 +63,9 @@ test.describe('Cadastro de colaborador', () => {
   })
 
   test('bloqueia avanço com nome menor que 3 caracteres', async ({ page }) => {
-    await page.getByRole('button', { name: /Novo Colaborador/i }).click()
-    await page.getByLabel('Nome').fill('AB')
-    await page.getByLabel('E-mail').fill('valido@empresa.com')
+    await page.getByRole('link', { name: /novo colaborador/i }).click()
+    await page.getByLabel(/nome completo/i).fill('AB')
+    await page.getByLabel(/e-mail corporativo/i).fill('valido@empresa.com')
     await page.getByRole('button', { name: /Próximo/i }).click()
 
     await expect(page.getByText(/pelo menos 3/i)).toBeVisible()
@@ -67,12 +73,12 @@ test.describe('Cadastro de colaborador', () => {
   })
 
   test('bloqueia avanço com e-mail inválido', async ({ page }) => {
-    await page.getByRole('button', { name: /Novo Colaborador/i }).click()
-    await page.getByLabel('Nome').fill('Nome Válido')
-    await page.getByLabel('E-mail').fill('nao-e-email')
+    await page.getByRole('link', { name: /novo colaborador/i }).click()
+    await page.getByLabel(/nome completo/i).fill('Nome Válido')
+    await page.getByLabel(/e-mail corporativo/i).fill('nao-e-email')
     await page.getByRole('button', { name: /Próximo/i }).click()
 
-    await expect(page.getByText(/inválido/i)).toBeVisible()
+    await expect(page.getByText(/e-mail válido/i)).toBeVisible()
     await expect(page.getByText('Informações Básicas')).toBeVisible()
   })
 
@@ -80,51 +86,51 @@ test.describe('Cadastro de colaborador', () => {
     const name = 'Nome Preservado'
     const email = `preservado-${Date.now()}@empresa.com`
 
-    await page.getByRole('button', { name: /Novo Colaborador/i }).click()
-    await page.getByLabel('Nome').fill(name)
-    await page.getByLabel('E-mail').fill(email)
+    await page.getByRole('link', { name: /novo colaborador/i }).click()
+    await page.getByLabel(/nome completo/i).fill(name)
+    await page.getByLabel(/e-mail corporativo/i).fill(email)
     await page.getByRole('button', { name: /Próximo/i }).click()
     await expect(page.getByText('Informações Profissionais')).toBeVisible()
     await page.getByRole('button', { name: /Voltar/i }).click()
 
-    await expect(page.getByLabel('Nome')).toHaveValue(name)
-    await expect(page.getByLabel('E-mail')).toHaveValue(email)
+    await expect(page.getByLabel(/nome completo/i)).toHaveValue(name)
+    await expect(page.getByLabel(/e-mail corporativo/i)).toHaveValue(email)
   })
 
   test('rejeita e-mail já cadastrado localmente', async ({ page }) => {
     const suffix = Date.now()
     const email = `dup-${suffix}@empresa.com`
 
-    await page.getByRole('button', { name: /Novo Colaborador/i }).click()
-    await page.getByLabel('Nome').fill(`Primeiro ${suffix}`)
-    await page.getByLabel('E-mail').fill(email)
+    await page.getByRole('link', { name: /novo colaborador/i }).click()
+    await page.getByLabel(/nome completo/i).fill(`Primeiro ${suffix}`)
+    await page.getByLabel(/e-mail corporativo/i).fill(email)
     await page.getByRole('button', { name: /Próximo/i }).click()
-    await page.getByLabel('Departamento').click()
-    await page.getByRole('option', { name: 'RH' }).click()
-    await page.getByRole('button', { name: /Concluir/i }).click()
-    await expect(page.getByText(/sucesso|local/i)).toBeVisible({ timeout: 15000 })
+    await page.getByLabel(/selecione o departamento/i).click()
+    await page.getByRole('option', { name: 'TI', exact: true }).click()
+    await page.getByRole('button', { name: /finalizar cadastro/i }).click()
+    await expect(page.getByText(/colaborador cadastrado com sucesso|salvo no dispositivo/i)).toBeVisible({ timeout: 15000 })
 
-    await page.goto('/staffs/new')
-    await page.getByLabel('Nome').fill(`Segundo ${suffix}`)
-    await page.getByLabel('E-mail').fill(email)
+    // Aguarda o registro aparecer na lista (garante cache TanStack Query populado)
+    await expect(page.getByText(`Primeiro ${suffix}`)).toBeVisible({ timeout: 15000 })
+    // Navega via SPA para preservar o cache de staffs
+    await page.getByRole('link', { name: /novo colaborador/i }).click()
+    await page.getByLabel(/nome completo/i).fill(`Segundo ${suffix}`)
+    await page.getByLabel(/e-mail corporativo/i).fill(email)
     await page.getByRole('button', { name: /Próximo/i }).click()
-    await page.getByLabel('Departamento').click()
-    await page.getByRole('option', { name: 'Marketing' }).click()
-    await page.getByRole('button', { name: /Concluir/i }).click()
 
-    await expect(page.getByText(/já existe/i)).toBeVisible({ timeout: 15000 })
+    await expect(page.getByText(/já está em uso/i)).toBeVisible({ timeout: 15000 })
   })
 
   test('draft do formulário sobrevive à navegação', async ({ page }) => {
     const name = 'Rascunho Teste'
 
-    await page.getByRole('button', { name: /Novo Colaborador/i }).click()
-    await page.getByLabel('Nome').fill(name)
-    await page.getByRole('button', { name: /Voltar/i }).click()
+    await page.getByRole('link', { name: /novo colaborador/i }).click()
+    await page.getByLabel(/nome completo/i).fill(name)
+    await page.getByRole('button', { name: /Cancelar/i }).click()
     await expect(page).toHaveURL(/\/staffs/)
 
-    await page.getByRole('button', { name: /Novo Colaborador/i }).click()
-    await expect(page.getByLabel('Nome')).toHaveValue(name)
+    await page.getByRole('link', { name: /novo colaborador/i }).click()
+    await expect(page.getByLabel(/nome completo/i)).toHaveValue(name)
   })
 })
 

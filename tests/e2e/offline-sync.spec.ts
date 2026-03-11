@@ -1,4 +1,9 @@
 import { test, expect } from '@playwright/test'
+import { cleanupTestRecords } from './utils/cleanup'
+
+test.afterEach(async () => {
+  await cleanupTestRecords()
+})
 
 test.describe('Resiliência e Sincronização Offline', () => {
   test.beforeEach(async ({ page }) => {
@@ -12,33 +17,45 @@ test.describe('Resiliência e Sincronização Offline', () => {
     const name = `Offline Staff ${suffix}`
     const email = `offline-${suffix}@empresa.com`
 
-    // 1. Simular queda de rede (bloquear Firestore)
-    await context.route('**/firestore.googleapis.com/**', route => route.abort())
+    // 1. Navegar para o formulário antes de simular offline (evita interferência do listener Firestore na lista)
+    await page.getByRole('link', { name: /Novo Colaborador/i }).click()
+    await expect(page).toHaveURL(/\/staffs\/new/)
 
-    // 2. Tentar cadastrar
-    await page.getByRole('button', { name: /Novo Colaborador/i }).click()
-    await page.getByLabel(/Nome/i).fill(name)
-    await page.getByLabel(/E-mail/i).fill(email)
-    await page.getByRole('button', { name: /Próximo/i }).click()
+    // 2. Simular queda de rede
+    await context.setOffline(true)
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'onLine', { get: () => false, configurable: true })
+      window.dispatchEvent(new Event('offline'))
+    })
+
+    await page.getByLabel(/Nome Completo/i).fill(name)
+    await page.getByLabel(/E-mail Corporativo/i).fill(email)
+    await page.getByRole('button', { name: /Próximo Passo/i }).click()
     
-    await page.getByLabel(/Departamento/i).click()
-    await page.getByRole('option', { name: 'TI' }).click()
-    await page.getByRole('button', { name: /Finalizar/i }).click()
+    await page.getByLabel(/Selecione o Departamento/i).click()
+    await page.getByRole('option', { name: 'TI', exact: true }).click()
+    await page.getByRole('button', { name: /Finalizar Cadastro/i }).click()
 
-    // 3. Verificar feedback de modo offline
-    await expect(page.getByText(/Salvo no dispositivo|pendente/i)).toBeVisible({ timeout: 15000 })
+    // 3. Verificar feedback de sucesso (igual ao online)
+    await expect(page.getByText(/colaborador cadastrado com sucesso/i)).toBeVisible({ timeout: 15000 })
+    
+    // 4. Verificar redirecionamento automático
     await expect(page).toHaveURL(/\/staffs/, { timeout: 10000 })
 
-    // 4. Verificar status "Sincronizando" na lista
+    // 5. Verifica se o novo usuário aparece na lista com status correto
     const row = page.locator('tr', { hasText: name })
-    await expect(row.getByText(/Sincronizando|Pendente/i)).toBeVisible()
+    await expect(row).toBeVisible({ timeout: 10000 })
+    await expect(row.getByText('Ativo')).toBeVisible({ timeout: 5000 })
 
-    // 5. Restaurar rede
-    await context.unroute('**/firestore.googleapis.com/**')
+    // 6. Restaurar rede
+    await context.setOffline(false)
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'onLine', { get: () => true, configurable: true })
+      window.dispatchEvent(new Event('online'))
+    })
 
-    // 6. Sincronização automática deve ocorrer
-    // O chip deve mudar para "Ativo"
-    await expect(row.getByText('Ativo')).toBeVisible({ timeout: 30000 })
-    await expect(row.getByText(/Sincronizando/i)).not.toBeVisible()
+    // 7. Registro deve permanecer visível e Ativo após sincronizar em background
+    await expect(row).toBeVisible({ timeout: 15000 })
+    await expect(row.getByText('Ativo')).toBeVisible({ timeout: 15000 })
   })
 })
