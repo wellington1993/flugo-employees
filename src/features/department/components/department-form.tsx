@@ -80,10 +80,11 @@ export const DepartmentForm: React.FC<DepartmentFormProps> = ({ onCancel, onSave
     [allStaff]
   )
 
-  const { control, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<DepartmentFormData>({
+  const { control, handleSubmit, reset, setValue, watch, trigger, formState: { errors } } = useForm<DepartmentFormData>({
     resolver: zodResolver(departmentSchema),
     defaultValues: { name: '', description: '', managerId: '', staffIds: [] },
   })
+
 
   const selectedManagerId = watch('managerId')
   const selectedStaffIds = (watch('staffIds') ?? []) as string[]
@@ -126,6 +127,7 @@ export const DepartmentForm: React.FC<DepartmentFormProps> = ({ onCancel, onSave
         const sourceName = allDepartments.find((dept) => dept.id === staff.departmentId)?.name ?? 'Sem departamento'
         transferMap.set(sourceName, (transferMap.get(sourceName) ?? 0) + 1)
       })
+
     return Array.from(transferMap.entries())
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
@@ -214,14 +216,27 @@ export const DepartmentForm: React.FC<DepartmentFormProps> = ({ onCancel, onSave
       setToast({ message: 'Departamento salvo com sucesso.', severity: 'success' })
       onSaved()
     } catch (error) {
+      const errorLike = error as { message?: string; code?: string } | null
+      const errorMessage = errorLike?.message ?? ''
+      const errorCode = errorLike?.code ?? ''
       setToast({
-        message: error instanceof Error && error.message === 'DUPLICATE_DEPARTMENT_NAME'
+        message: errorMessage === 'DUPLICATE_DEPARTMENT_NAME'
           ? 'Já existe um departamento com esse nome.'
-          : error instanceof Error && error.message === 'DEPARTMENT_STAFF_REMOVAL_REQUIRES_TRANSFER'
+          : errorMessage === 'DEPARTMENT_NOT_FOUND'
+            ? 'Departamento não encontrado. Recarregue a lista e tente novamente.'
+          : errorMessage === 'DEPARTMENT_STAFF_REMOVAL_REQUIRES_TRANSFER'
             ? 'Não foi possível concluir: transfira os colaboradores removidos para outro departamento antes de salvar.'
-            : error instanceof Error && error.message === 'DEPARTMENT_TRANSFER_TARGET_INVALID'
+            : errorMessage === 'DEPARTMENT_TRANSFER_TARGET_INVALID'
               ? 'Selecione um departamento de destino válido para os colaboradores removidos.'
-            : 'Não foi possível salvar o departamento.',
+            : errorCode === 'permission-denied'
+              ? 'Você não tem permissão para salvar este departamento.'
+            : errorCode === 'unavailable' || errorCode === 'network-request-failed'
+              ? 'Falha de conexão ao salvar. Verifique a internet e tente novamente.'
+            : errorMessage.includes('No document to update')
+              ? 'Algum registro relacionado não foi encontrado. Reabra o departamento e tente novamente.'
+            : errorMessage
+              ? `Não foi possível salvar o departamento (${errorMessage}).`
+              : 'Não foi possível salvar o departamento.',
         severity: 'error',
       })
     } finally {
@@ -231,20 +246,22 @@ export const DepartmentForm: React.FC<DepartmentFormProps> = ({ onCancel, onSave
 
   const handleNext = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
-    if (activeStep === 0) {
-      const base = await departmentSchema.pick({ name: true, description: true, managerId: true }).safeParseAsync({
-        name: watch('name'),
-        description: watch('description'),
-        managerId: watch('managerId'),
-      })
-      if (!base.success) {
-        setToast({ message: 'Preencha os campos obrigatórios da etapa.', severity: 'error' })
-        return
+    
+    const isValid = await trigger()
+    if (!isValid) {
+      const firstError = Object.keys(errors)[0] as keyof DepartmentFormData | undefined
+      if (firstError && ['name', 'description', 'managerId'].includes(firstError)) {
+        setActiveStep(0)
       }
-      setActiveStep(1)
+      setToast({ message: 'Verifique os campos marcados em vermelho.', severity: 'error' })
       return
     }
-    setConfirmOpen(true)
+
+    if (activeStep === STEPS.length - 1) {
+      setConfirmOpen(true)
+    } else {
+      setActiveStep(1)
+    }
   }
 
   const handleBack = () => {

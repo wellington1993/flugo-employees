@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Avatar,
   Table, 
@@ -29,17 +29,17 @@ import {
   useMediaQuery
 } from '@mui/material';
 import { Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material';
-import { useDepartments, useDeleteDepartment } from '@/features/staff/hooks';
+import { useDepartments, useDeleteDepartment, useStaffs } from '@/features/staff/hooks';
 import { container } from '@/infrastructure/container';
 import { type Department } from '../types';
 import { listPageStyles } from '@/components/list/list-styles';
 import { FEEDBACK_SNACKBAR_ANCHOR, FEEDBACK_SNACKBAR_DURATION } from '@/components/feedback-config';
-import { isFailure } from '@/core/functional/result';
 
 export const DepartmentList: React.FC<{ onEdit: (dept: Department) => void; onAdd: () => void }> = ({ onEdit, onAdd }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { data: departments = [], isLoading: loading, refetch } = useDepartments();
+  const { data: allStaff = [] } = useStaffs();
   const { mutateAsync: deleteDept } = useDeleteDepartment();
 
   const [filters, setFilters] = useState({ name: '' });
@@ -49,58 +49,66 @@ export const DepartmentList: React.FC<{ onEdit: (dept: Department) => void; onAd
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [transferTargetId, setTransferTargetId] = useState('');
-  const [requiresTransfer, setRequiresTransfer] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [localFeedback, setLocalFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const departmentToDelete = useMemo(
-    () => departments.find((department) => department.id === deleteId) ?? null,
-    [departments, deleteId]
+  const staffByDept = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const staff of allStaff) {
+      if (staff.departmentId) {
+        map.set(staff.departmentId, (map.get(staff.departmentId) || 0) + 1);
+      }
+    }
+    return map;
+  }, [allStaff]);
+
+  const departmentsWithCount = useMemo(
+    () => departments.map(dept => ({ ...dept, staffCount: staffByDept.get(dept.id) || 0 })),
+    [departments, staffByDept]
   );
 
-  useEffect(() => {
-    if (feedback) setLocalFeedback(feedback);
-  }, [feedback]);
+  const departmentToDelete = useMemo(
+    () => departmentsWithCount.find((department) => department.id === deleteId) ?? null,
+    [departmentsWithCount, deleteId]
+  );
+  
+  const requiresTransfer = (departmentToDelete?.staffCount || 0) > 0;
 
   const handleDelete = async () => {
     if (deleteId) {
       try {
-        const staffCount = departmentToDelete?.staffIds?.length || 0;
         if (requiresTransfer) {
           if (!transferTargetId) {
-            setFeedback({ type: 'error', message: 'Selecione um departamento de destino para continuar.' });
+            setLocalFeedback({ type: 'error', message: 'Selecione um departamento de destino para continuar.' });
             return;
           }
-          // Usando o repositório diretamente para transferência complexa até termos um UseCase específico se necessário
-          const result = await container.departmentRepository.delete(deleteId);
-          if (isFailure(result)) throw result.error;
-          
-          setFeedback({ type: 'success', message: staffCount > 0 ? `Departamento excluído com sucesso. ${staffCount} colaborador(es) transferido(s).` : 'Departamento excluído com sucesso.' });
-         } else {
-           await deleteDept(deleteId);
-           setFeedback({ type: 'success', message: 'Departamento excluído com sucesso.' });
+          const staffToTransfer = allStaff.filter(s => s.departmentId === deleteId);
+          for (const staff of staffToTransfer) {
+            await container.updateStaffUseCase.execute(staff.id, { departmentId: transferTargetId });
+          }
         }
+        await deleteDept(deleteId);
+        setLocalFeedback({ type: 'success', message: 'Departamento excluído com sucesso.' });
+        
         setDeleteId(null);
         setTransferTargetId('');
-        setRequiresTransfer(false);
         refetch();
-        } catch {
-           setFeedback({ type: 'error', message: 'Não foi possível concluir a exclusão do departamento.' });
-         }
-       }
+      } catch {
+         setLocalFeedback({ type: 'error', message: 'Não foi possível concluir a exclusão do departamento.' });
+      }
+    }
   };
 
   const filteredDepartments = useMemo(
-    () => departments.filter((dept) =>
+    () => departmentsWithCount.filter((dept) =>
       (dept.name || '').toLowerCase().includes(filters.name.toLowerCase())
     ),
-    [departments, filters.name]
+    [departmentsWithCount, filters.name]
   );
 
   const sortedDepartments = useMemo(() => {
     return [...filteredDepartments].sort((a, b) => {
-      const aValue = orderBy === 'name' ? (a.name || '') : (a.staffIds?.length || 0);
-      const bValue = orderBy === 'name' ? (b.name || '') : (b.staffIds?.length || 0);
+      const aValue = orderBy === 'name' ? (a.name || '') : a.staffCount;
+      const bValue = orderBy === 'name' ? (b.name || '') : b.staffCount;
       if (aValue < bValue) return order === 'asc' ? -1 : 1;
       if (aValue > bValue) return order === 'asc' ? 1 : -1;
       return 0;
@@ -108,10 +116,11 @@ export const DepartmentList: React.FC<{ onEdit: (dept: Department) => void; onAd
   }, [filteredDepartments, order, orderBy]);
 
   const paginatedDepartments = sortedDepartments.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
-  const handleRequestDelete = (dept: Department) => {
+  
+  const handleRequestDelete = (dept: { id: string, staffCount: number }) => {
     setDeleteId(dept.id || null)
-    setRequiresTransfer((dept.staffIds?.length || 0) > 0)
   }
+
   const handleSort = (column: 'name' | 'staffCount') => {
     const isAsc = orderBy === column && order === 'asc';
     setOrder(isAsc ? 'desc' : 'asc');
@@ -172,7 +181,7 @@ export const DepartmentList: React.FC<{ onEdit: (dept: Department) => void; onAd
                     <Typography fontWeight={700}>{dept.name}</Typography>
                   </Box>
                   <Box ml="auto">
-                    <Chip label={`${dept.staffIds?.length || 0} colab.`} size="small" />
+                    <Chip label={`${dept.staffCount} colab.`} size="small" />
                   </Box>
                 </Stack>
                 <Box>
@@ -256,7 +265,7 @@ export const DepartmentList: React.FC<{ onEdit: (dept: Department) => void; onAd
                   </Stack>
                 </TableCell>
                 <TableCell>
-                  <Chip label={dept.staffIds?.length || 0} size="small" />
+                  <Chip label={dept.staffCount} size="small" />
                 </TableCell>
                 <TableCell>{dept.description || '-'}</TableCell>
                 <TableCell align="center">
@@ -306,7 +315,6 @@ export const DepartmentList: React.FC<{ onEdit: (dept: Department) => void; onAd
         onClose={() => {
           setDeleteId(null)
           setTransferTargetId('')
-          setRequiresTransfer(false)
         }}
         maxWidth="xs"
         fullWidth
@@ -315,7 +323,7 @@ export const DepartmentList: React.FC<{ onEdit: (dept: Department) => void; onAd
         <DialogContent>
           <DialogContentText sx={{ mb: 2 }}>
             {requiresTransfer
-              ? `Este departamento possui ${departmentToDelete?.staffIds?.length || 0} colaborador(es). Escolha o destino para transferi-los antes de concluir a exclusão.`
+              ? `Este departamento possui ${departmentToDelete?.staffCount || 0} colaborador(es). Escolha o destino para transferi-los antes de concluir a exclusão.`
               : 'Você está prestes a excluir este departamento. Esta ação é permanente e não pode ser desfeita.'}
           </DialogContentText>
           {requiresTransfer && (
@@ -342,7 +350,6 @@ export const DepartmentList: React.FC<{ onEdit: (dept: Department) => void; onAd
             onClick={() => {
               setDeleteId(null);
               setTransferTargetId('');
-              setRequiresTransfer(false);
             }}
           >
             Cancelar
@@ -362,7 +369,6 @@ export const DepartmentList: React.FC<{ onEdit: (dept: Department) => void; onAd
           open
           autoHideDuration={FEEDBACK_SNACKBAR_DURATION}
           onClose={() => {
-            setFeedback(null)
             setLocalFeedback(null)
           }}
           anchorOrigin={FEEDBACK_SNACKBAR_ANCHOR}

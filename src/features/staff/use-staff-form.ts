@@ -3,13 +3,17 @@ import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
-import { normalizeStaffEmail, normalizeStaffStatus, staffSchema, stepSchemas, type StaffSchema } from '@/features/staff/validation'
+import { normalizeStaffEmail, normalizeStaffStatus, staffSchema, stepSchemas, basicInfoSchema, type StaffSchema } from '@/features/staff/validation'
 import { container } from '@/infrastructure/container'
 import { type Department } from '@/domain/entities/department'
 import { type Staff } from '@/domain/entities/staff'
 import { isFailure } from '@/core/functional/result'
 
 const STEPS = ['Informações Básicas', 'Informações Profissionais']
+const STEP_FIELDS: Array<Array<keyof StaffSchema>> = [
+  ['name', 'email', 'status'],
+  ['departmentId', 'role', 'admissionDate', 'hierarchicalLevel', 'managerId', 'baseSalary'],
+]
 
 export function getDuplicateNameWarning(name: string, staffs: Staff[]): string | null {
   const normalizedName = name.trim().toLowerCase()
@@ -176,17 +180,14 @@ export function useStaffForm(staffId?: string) {
 
   const handleNext = async () => {
     const currentStepSchema = stepSchemas[activeStep]
-    if (!currentStepSchema) return false
-    const currentStepValues = form.getValues()
+    const currentStepFields = STEP_FIELDS[activeStep]
+    if (!currentStepSchema || !currentStepFields) return false
 
-    const stepValidation = await currentStepSchema.safeParseAsync(currentStepValues)
-
-    if (!stepValidation.success) {
-      stepValidation.error.issues.forEach((issue) => {
-        form.setError(issue.path[0] as any, {
-          message: issue.message
-        })
-      })
+    const isCurrentStepValid = await form.trigger(currentStepFields, { shouldFocus: true })
+    if (!isCurrentStepValid) {
+      const firstErroredField = currentStepFields.find((field) => form.getFieldState(field).invalid)
+      const stepWithError = firstErroredField && Object.keys(basicInfoSchema.shape).includes(firstErroredField as string) ? 0 : 1
+      setActiveStep(stepWithError)
       setToast({ message: 'Verifique os campos marcados em vermelho.', severity: 'error' })
       return false
     }
