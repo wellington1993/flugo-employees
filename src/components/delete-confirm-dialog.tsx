@@ -9,33 +9,46 @@ import {
 
 type DeleteConfirmDialogProps = {
   open: boolean
-  staffName: string
+  staffName?: string
+  title?: string
+  description?: string
   onConfirm: () => void
-  onCancel: () => void
+  onCancel?: () => void
+  onClose?: () => void
   isLoading?: boolean
+  loading?: boolean
 }
 
 export function DeleteConfirmDialog({
   open,
   staffName,
+  title,
+  description,
   onConfirm,
   onCancel,
+  onClose,
   isLoading,
+  loading,
 }: DeleteConfirmDialogProps) {
+  const handleClose = onClose ?? onCancel ?? (() => {})
+  const busy = loading ?? isLoading ?? false
+  const resolvedTitle = title ?? 'Excluir colaborador'
+  const resolvedDescription =
+    description ??
+    `Tem certeza que deseja excluir ${staffName ? `"${staffName}"` : 'este registro'}? Essa ação não pode ser desfeita.`
+
   return (
-    <Dialog open={open} onClose={onCancel} maxWidth="xs" fullWidth>
-      <DialogTitle>Excluir colaborador</DialogTitle>
+    <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
+      <DialogTitle>{resolvedTitle}</DialogTitle>
       <DialogContent>
-        <DialogContentText>
-          Tem certeza que deseja excluir <strong>{staffName}</strong>? Essa ação não pode ser desfeita.
-        </DialogContentText>
+        <DialogContentText>{resolvedDescription}</DialogContentText>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onCancel} disabled={isLoading}>
+        <Button onClick={handleClose} disabled={busy}>
           Cancelar
         </Button>
-        <Button onClick={onConfirm} color="error" variant="contained" disabled={isLoading}>
-          {isLoading ? 'Excluindo...' : 'Excluir'}
+        <Button onClick={onConfirm} color="error" variant="contained" disabled={busy}>
+          {busy ? 'Excluindo...' : 'Excluir'}
         </Button>
       </DialogActions>
     </Dialog>

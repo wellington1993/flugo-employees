@@ -37,3 +37,9 @@ dist-ssr
 # Local documentation drafts
 docs/
 doc/
+
+# Test results
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/

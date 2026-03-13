@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '@/libs/firebase'
 import { addPendingStaff, getPendingStaffs, removePendingByEmail } from '@/services/local-storage'
 import type { Staff } from '@/features/staff/types'
@@ -6,113 +6,102 @@ import type { StaffSchema } from '@/features/staff/validation'
 
 export interface StaffStorage {
   list(): Promise<Staff[]>;
-  create(data: StaffSchema): Promise<{ synced: boolean; error?: string }>;
+  create(data: StaffSchema): Promise<{ staff: Staff; synced: boolean; error?: string }>;
   sync(staff: Staff): Promise<boolean>;
   update(id: string, data: StaffSchema): Promise<void>;
   delete(id: string): Promise<void>;
 }
 
-function withTimeout<T>(promise: Promise<T>, ms = 30000): Promise<T> {
-  const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('Timeout de conexão com o banco.')), ms)
-  )
-  return Promise.race([promise, timeout])
-}
-
-async function logRemoteError(context: string, error: unknown) {
-  if (!isFirebaseConfigured) return
-  try {
-    const logRef = collection(db, 'app_logs')
-    const err = error as { message?: string; code?: string }
-    await addDoc(logRef, {
-      context,
-      message: err.message || err.code || String(error),
-      userAgent: navigator.userAgent,
-      timestamp: Date.now()
-    })
-  } catch (e) {
-    console.error('Remote log failed', e)
-  }
-}
-
 export const FirebaseStorage: StaffStorage = {
   async list(): Promise<Staff[]> {
     const pending = getPendingStaffs()
-    if (!isFirebaseConfigured) return pending
+    if (!isFirebaseConfigured) return pending;
 
     try {
       const staffsCollection = collection(db, 'staffs')
-      const snapshot = await withTimeout(getDocs(staffsCollection))
+      // O getDocs usará o cache local automaticamente se estiver offline
+      const snapshot = await getDocs(staffsCollection)
       const fromFirebase = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Staff))
-
-      const firebaseIds = new Set(snapshot.docs.map(d => d.id))
-      const stillPending = pending.filter(s => !firebaseIds.has(s.email))
       
+      const firebaseEmails = new Set(fromFirebase.map(s => s.email))
+      // Filtra pendentes que já chegaram no Firebase para evitar duplicidade
+      const stillPending = pending.filter(s => !firebaseEmails.has(s.email))
+      
+      // Sincroniza o localStorage se algum item pendente já foi detectado no Firebase
       if (stillPending.length !== pending.length) {
         localStorage.setItem('flugo_pending_staffs', JSON.stringify(stillPending))
       }
-
+      
       return [...fromFirebase, ...stillPending]
     } catch (err) {
-      console.error('[Firebase] List failed:', err)
+      if (import.meta.env.DEV) console.warn('[Firebase] List failed or offline, returning pending + local cache if available.', err)
       return pending
     }
   },
 
-  async create(data: StaffSchema): Promise<{ synced: boolean; error?: string }> {
-    if (!isFirebaseConfigured) {
-      addPendingStaff(data)
-      return { synced: false, error: 'Firebase offline' }
+  async create(data: StaffSchema): Promise<{ staff: Staff; synced: boolean; error?: string }> {
+    if (!isFirebaseConfigured || !navigator.onLine) {
+      const staffSalvo = addPendingStaff(data)
+      return { staff: staffSalvo, synced: false, error: 'Offline' }
     }
 
     try {
-      const staffDoc = doc(db, 'staffs', data.email)
-      await withTimeout(setDoc(staffDoc, { ...data, createdAt: Date.now() }))
+      const now = Date.now()
+      const newStaff: Staff = { ...data, id: data.email, createdAt: now }
+      const staffDoc = doc(db, 'staffs', newStaff.id)
       
+      // Verifica se já existe para evitar sobrescrita acidental
+      const docSnap = await getDoc(staffDoc)
+      if (docSnap.exists()) {
+        throw new Error('Este e-mail já está em uso por outro colaborador.')
+      }
+
+      await setDoc(staffDoc, { ...data, createdAt: now })
       removePendingByEmail(data.email)
-      return { synced: true }
+      return { staff: newStaff, synced: true }
     } catch (err: unknown) {
-      const error = err as { code?: string; message?: string }
-      console.error('[Firebase] Create failed:', error)
+      const error = err as { message?: string }
       
-      addPendingStaff(data)
-      logRemoteError('createStaff', err).catch(() => {})
-      return { synced: false, error: error.code || error.message }
+      // Se for erro de duplicidade que acabamos de lançar, repassa para o form
+      if (error.message?.includes('em uso')) {
+        throw err
+      }
+
+      if (import.meta.env.DEV) console.warn('[Firebase] Create failed, falling back to offline.', err)
+      const staffSalvo = addPendingStaff(data)
+      return { staff: staffSalvo, synced: false, error: error.message || 'Network error' }
     }
   },
 
   async sync(staff: Staff): Promise<boolean> {
-    if (!isFirebaseConfigured) return false
-
+    if (!isFirebaseConfigured || !navigator.onLine) return false;
     try {
       const staffDoc = doc(db, 'staffs', staff.email)
-      const docSnap = await withTimeout(getDoc(staffDoc))
-      
+      const docSnap = await getDoc(staffDoc)
       if (docSnap.exists()) {
         removePendingByEmail(staff.email)
         return true
       }
-
       const { _localId, _pendingSync, id, ...payload } = staff
-      await withTimeout(setDoc(staffDoc, { ...payload, createdAt: staff.createdAt || Date.now() }))
-
+      await setDoc(staffDoc, { ...payload, createdAt: staff.createdAt || Date.now() })
       removePendingByEmail(staff.email)
       return true
     } catch (err: unknown) {
-      const error = err as { code?: string; message?: string }
-      console.error('[Firebase] Sync failed:', error.code || error.message)
+      if (import.meta.env.DEV) console.error('[Firebase] Sync failed:', err)
       return false
     }
   },
 
   async update(id: string, data: StaffSchema): Promise<void> {
+    if (!isFirebaseConfigured || !navigator.onLine) return;
     const staffDoc = doc(db, 'staffs', id)
-    await withTimeout(updateDoc(staffDoc, { ...data, updatedAt: Date.now() }))
+    await updateDoc(staffDoc, { ...data, updatedAt: Date.now() })
   },
 
   async delete(id: string): Promise<void> {
+    if (!isFirebaseConfigured || !navigator.onLine) return;
     const staffDoc = doc(db, 'staffs', id)
-    await withTimeout(deleteDoc(staffDoc))
+    await deleteDoc(staffDoc)
   }
 }
 
@@ -120,17 +109,17 @@ export const LocalOnlyStorage: StaffStorage = {
   async list(): Promise<Staff[]> {
     return getPendingStaffs()
   },
-  async create(data: StaffSchema): Promise<{ synced: boolean; error?: string }> {
-    addPendingStaff(data)
-    return { synced: false, error: 'Offline' }
+  async create(data: StaffSchema): Promise<{ staff: Staff; synced: boolean; error?: string }> {
+    const staffSalvo = addPendingStaff(data)
+    return { staff: staffSalvo, synced: false, error: 'Offline' }
   },
   async sync(): Promise<boolean> {
     return false
   },
   async update(): Promise<void> {
-    console.warn('Update local not supported')
+    if (import.meta.env.DEV) console.warn('Update local not supported')
   },
   async delete(): Promise<void> {
-    console.warn('Delete local not supported')
+    if (import.meta.env.DEV) console.warn('Delete local not supported')
   }
 }

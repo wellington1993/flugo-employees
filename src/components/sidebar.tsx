@@ -1,5 +1,6 @@
 import { Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, useMediaQuery, useTheme } from '@mui/material'
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt'
+import AccountTreeIcon from '@mui/icons-material/AccountTree'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import { useNavigate } from 'react-router-dom'
 
@@ -37,6 +38,24 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
             </ListItemIcon>
             <ListItemText
               primary="Colaboradores"
+              primaryTypographyProps={{ fontSize: 14, color: '#637381', fontWeight: 500 }}
+            />
+            <ChevronRightIcon sx={{ fontSize: 18, color: '#919eab' }} />
+          </ListItemButton>
+        </ListItem>
+        <ListItem disablePadding>
+          <ListItemButton
+            onClick={() => {
+              navigate('/departments')
+              if (onClose) onClose()
+            }}
+            sx={{ borderRadius: 1, px: 1 }}
+          >
+            <ListItemIcon sx={{ minWidth: 32 }}>
+              <AccountTreeIcon sx={{ fontSize: 18, color: '#637381' }} />
+            </ListItemIcon>
+            <ListItemText
+              primary="Departamentos"
               primaryTypographyProps={{ fontSize: 14, color: '#637381', fontWeight: 500 }}
             />
             <ChevronRightIcon sx={{ fontSize: 18, color: '#919eab' }} />
