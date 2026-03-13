@@ -16,8 +16,6 @@ import {
   TableSortLabel,
   Typography,
   Skeleton,
-  useMediaQuery,
-  useTheme,
   Checkbox,
   TextField,
   MenuItem,
@@ -26,11 +24,15 @@ import {
 } from '@mui/material'
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1'
 import DeleteIcon from '@mui/icons-material/Delete'
+import EditIcon from '@mui/icons-material/Edit'
 import { Link } from 'react-router-dom'
 import { useStaffs, useDepartments, useBulkDeleteStaff } from '@/features/staff/hooks'
+import { normalizeStaffStatus } from '@/features/staff/validation'
 import { useSortTable } from '@/hooks/use-sort-table'
 import { getComparator } from '@/helpers/table-sorting'
 import { DeleteConfirmDialog } from './delete-confirm-dialog'
+import { listPageStyles } from '@/components/list/list-styles'
+import { FEEDBACK_SNACKBAR_ANCHOR, FEEDBACK_SNACKBAR_DURATION } from '@/components/feedback-config'
 
 const columns = [
   { id: 'name', label: 'Colaborador' },
@@ -38,12 +40,11 @@ const columns = [
   { id: 'departmentId', label: 'Departamento', align: 'left' },
   { id: 'role', label: 'Cargo', align: 'left' },
   { id: 'status', label: 'Status', align: 'center' },
+  { id: 'actions', label: 'Ações', align: 'center' },
 ]
 
 
 export function StaffList() {
-  const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const { data: staffs, isLoading, isError } = useStaffs()
   const { data: departments } = useDepartments()
   const { mutateAsync: bulkDelete } = useBulkDeleteStaff()
@@ -89,11 +90,11 @@ export function StaffList() {
     setIsDeleting(true)
     try {
       await bulkDelete(selected)
-      setToast({ message: `${selected.length} colaboradores excluídos com sucesso.`, severity: 'success' })
+      setToast({ message: `${selected.length} colaborador(es) excluído(s) com sucesso.`, severity: 'success' })
       setSelected([])
       setConfirmDelete(false)
     } catch (e) {
-      setToast({ message: 'Erro ao excluir colaboradores.', severity: 'error' })
+      setToast({ message: 'Não foi possível excluir os colaboradores selecionados.', severity: 'error' })
     } finally {
       setIsDeleting(false)
     }
@@ -108,25 +109,25 @@ export function StaffList() {
   }
 
   return (
-    <Box sx={{ p: isMobile ? 1 : 2 }}>
-      <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'stretch', sm: 'center' }} justifyContent="space-between" mb={4} gap={2}>
+    <Box sx={listPageStyles.pageBox}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'stretch', sm: 'center' }} justifyContent="space-between" sx={listPageStyles.headerStackSx}>
         <Box>
-          <Typography variant="h4" fontWeight={800}>Colaboradores</Typography>
-          <Typography variant="body2" color="text.secondary">Gerencie a equipe da sua empresa.</Typography>
+          <Typography variant={listPageStyles.title.variant} fontWeight={listPageStyles.title.fontWeight}>Colaboradores</Typography>
+          <Typography variant={listPageStyles.subtitle.variant} color={listPageStyles.subtitle.color}>Gerencie a equipe da sua empresa.</Typography>
         </Box>
         <Stack direction="row" spacing={2}>
           {selected.length > 0 && (
-            <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => setConfirmDelete(true)}>
+            <Button disabled={!navigator.onLine} variant={listPageStyles.dangerActionButton.variant} size={listPageStyles.dangerActionButton.size} color={listPageStyles.dangerActionButton.color} startIcon={<DeleteIcon />} onClick={() => setConfirmDelete(true)}>
               Excluir ({selected.length})
             </Button>
           )}
-          <Button variant="contained" component={Link} to="/staffs/new" startIcon={<PersonAddAlt1Icon />}>
+          <Button variant={listPageStyles.primaryActionButton.variant} size={listPageStyles.primaryActionButton.size} component={Link} to="/staffs/new" startIcon={<PersonAddAlt1Icon />}>
             Novo Colaborador
           </Button>
         </Stack>
       </Stack>
 
-      <Paper elevation={0} variant="outlined" sx={{ p: 2, mb: 3, borderRadius: 3 }}>
+      <Paper elevation={0} variant="outlined" sx={listPageStyles.filterPaper}>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' }, gap: 2 }}>
            <TextField label="Filtrar por nome" size="small" value={filters.name} onChange={(e) => setFilters(f => ({ ...f, name: e.target.value }))} />
            <TextField label="Filtrar por e-mail" size="small" value={filters.email} onChange={(e) => setFilters(f => ({ ...f, email: e.target.value }))} />
@@ -137,15 +138,15 @@ export function StaffList() {
         </Box>
       </Paper>
 
-      <TableContainer component={Paper} elevation={0} variant="outlined" sx={{ borderRadius: 3 }}>
-        <Table sx={{ minWidth: 650 }}>
+      <TableContainer component={Paper} elevation={0} variant="outlined" sx={listPageStyles.tableContainer}>
+        <Table sx={listPageStyles.tableSx}>
           <TableHead>
-            <TableRow sx={{ bgcolor: 'grey.50' }}>
+            <TableRow sx={listPageStyles.tableHeadRow}>
               <TableCell padding="checkbox">
                 <Checkbox indeterminate={selected.length > 0 && selected.length < paginated.length} checked={paginated.length > 0 && selected.length === paginated.length} onChange={handleSelectAll} />
               </TableCell>
               {columns.map((col) => (
-                <TableCell key={col.id} align={col.align as any} sx={{ fontWeight: 700, fontSize: 12, textTransform: 'uppercase' }}>
+                <TableCell key={col.id} align={col.align as any} sx={listPageStyles.tableHeadCell}>
                   {col.id !== 'actions' ? (
                     <TableSortLabel active={orderBy === col.id} direction={orderBy === col.id ? order : 'asc'} onClick={createSortHandler(col.id as any)}>
                       {col.label}
@@ -166,7 +167,7 @@ export function StaffList() {
                 <TableCell padding="checkbox"><Checkbox checked={selected.includes(row.id)} onChange={() => handleSelectOne(row.id)} /></TableCell>
                 <TableCell>
                   <Stack direction="row" alignItems="center" gap={2}>
-                    <Avatar sx={{ width: 32, height: 32, fontSize: 12, bgcolor: 'primary.main', color: 'primary.contrastText' }}>
+                    <Avatar sx={listPageStyles.avatar}>
                       {(row.name || '??').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                     </Avatar>
                     <Typography variant="subtitle2" fontWeight={700}>{row.name}</Typography>
@@ -175,20 +176,34 @@ export function StaffList() {
                 <TableCell>{row.email}</TableCell>
                 <TableCell>{getDepartmentName(row.departmentId)}</TableCell>
                 <TableCell>{row.role}</TableCell>
-                <TableCell align="center"><Chip label={row.status === 'ACTIVE' ? 'Ativo' : 'Inativo'} color={row.status === 'ACTIVE' ? 'success' : 'default'} size="small" /></TableCell>
+                <TableCell align="center"><Chip label={normalizeStaffStatus(row.status) === 'ACTIVE' ? 'Ativo' : 'Inativo'} color={normalizeStaffStatus(row.status) === 'ACTIVE' ? 'success' : 'default'} size="small" /></TableCell>
+                <TableCell align="center">
+                  <Button size={listPageStyles.secondaryActionButton.size} variant={listPageStyles.secondaryActionButton.variant} component={Link} to={`/staffs/${row.id}/edit`} startIcon={<EditIcon />}>
+                    Editar
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
             {!isLoading && paginated.length === 0 && (
-              <TableRow><TableCell colSpan={6} align="center"><Typography variant="body2" sx={{ py: 4 }}>Nenhum colaborador encontrado.</Typography></TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} align="center"><Typography variant="body2" sx={{ py: 4 }}>Nenhum colaborador encontrado.</Typography></TableCell></TableRow>
             )}
           </TableBody>
         </Table>
-        <TablePagination component="div" count={sorted.length} page={page} rowsPerPage={rowsPerPage} onPageChange={(_, p) => setPage(p)} onRowsPerPageChange={(e) => setRowsPerPage(parseInt(e.target.value, 10))} />
+        <TablePagination
+          component="div"
+          count={sorted.length}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onPageChange={(_, p) => setPage(p)}
+          onRowsPerPageChange={(e) => setRowsPerPage(parseInt(e.target.value, 10))}
+          labelRowsPerPage="Linhas por página:"
+          labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
+        />
       </TableContainer>
 
-      <DeleteConfirmDialog open={confirmDelete} onClose={() => setConfirmDelete(false)} onConfirm={handleDeleteSelected} title="Excluir Colaboradores" description={`Tem certeza que deseja excluir ${selected.length} colaboradores?`} loading={isDeleting} />
+      <DeleteConfirmDialog open={confirmDelete} onClose={() => setConfirmDelete(false)} onConfirm={handleDeleteSelected} title="Confirmar exclusão de colaboradores" description={`Você está prestes a excluir ${selected.length} colaborador(es). Esta ação é permanente e não pode ser desfeita.`} loading={isDeleting} />
       
-      <Snackbar open={!!toast} autoHideDuration={4000} onClose={() => setToast(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+      <Snackbar open={!!toast} autoHideDuration={FEEDBACK_SNACKBAR_DURATION} onClose={() => setToast(null)} anchorOrigin={FEEDBACK_SNACKBAR_ANCHOR}>
         <Alert severity={toast?.severity} onClose={() => setToast(null)} variant="filled" sx={{ width: '100%' }}>{toast?.message}</Alert>
       </Snackbar>
     </Box>
