@@ -4,6 +4,10 @@ Este é o sistema de gestão de colaboradores e times da Flugo. Ele foi constru�
 
 Demo online: [https://flugo-employees-theta.vercel.app](https://flugo-employees-theta.vercel.app)
 
+Preview em GIF: [https://flugo-employees-theta.vercel.app/media/demo-flugo.gif](https://flugo-employees-theta.vercel.app/media/demo-flugo.gif)
+
+![Demo do projeto Flugo Employees](https://flugo-employees-theta.vercel.app/media/demo-flugo.gif)
+
 ## O que tem dentro?
 
 - **React 19 + TypeScript:** O core da aplicação com a última versão do React.
