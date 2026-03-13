@@ -4,6 +4,8 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import { useNavigate } from 'react-router-dom'
 
+import { Logo } from './logo';
+
 const drawerWidth = 240
 
 interface SidebarProps {
@@ -18,12 +20,9 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
 
   const content = (
     <Box sx={{ p: 3 }}>
-      <Box
-        component="img"
-        src="https://flugo.com.br/images/flugo_hor.png"
-        alt="Flugo"
-        sx={{ width: '100px', mb: 4 }}
-      />
+      <Box sx={{ width: 120, mb: 4 }}>
+        <Logo />
+      </Box>
       <List disablePadding>
         <ListItem disablePadding>
           <ListItemButton

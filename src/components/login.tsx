@@ -13,6 +13,8 @@ import {
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth'
 import { auth, isFirebaseConfigured } from '@/libs/firebase'
 
+import { Logo } from './logo';
+
 export function getFriendlyAuthErrorMessage(err: unknown): string {
   const firebaseError = err as { code?: string; message?: string } | null
   const errorCode = firebaseError?.code || ''
@@ -23,6 +25,14 @@ export function getFriendlyAuthErrorMessage(err: unknown): string {
 
   if (errorCode === 'auth/invalid-email') {
     return 'O formato do e-mail é inválido.'
+  }
+
+  if (errorCode === 'auth/email-already-in-use') {
+    return 'Este e-mail já está em uso. Tente entrar ou use outro e-mail.'
+  }
+
+  if (errorCode === 'auth/weak-password') {
+    return 'A senha é muito fraca. Use pelo menos 6 caracteres.'
   }
 
   if (errorCode === 'auth/user-disabled') {
@@ -75,20 +85,21 @@ export function Login() {
         await signInWithEmailAndPassword(auth, normalizedEmail, password)
       }
       navigate('/staffs')
-    } catch (err: any) {
+    } catch (err) {
       console.error('[Login Error]', err)
       setError(getFriendlyAuthErrorMessage(err))
     } finally {
-
       setIsLoading(false)
     }
   }
 
   return (
     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', bgcolor: 'background.default' }}>
-      <Container maxWidth="sm">
-        <Paper elevation={0} variant="outlined" sx={{ p: 4, borderRadius: 3 }}>
-          <Typography variant="h4" fontWeight={700} mb={1} align="center">Flugo</Typography>
+      <Container maxWidth="xs">
+        <Paper elevation={0} variant="outlined" sx={{ p: { xs: 3, sm: 5 }, borderRadius: 3, textAlign: 'center' }}>
+          <Box sx={{ width: 140, mx: 'auto', mb: 2 }}>
+            <Logo />
+          </Box>
           <Typography variant="body2" color="text.secondary" align="center" mb={4}>Gerenciador de Colaboradores</Typography>
 
           {(!isFirebaseConfigured || shouldBypassAuth) && (
