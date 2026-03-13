@@ -1,3 +1,5 @@
+import { generateUUID } from '@/helpers/uuid'
+
 export interface QueuedMutation {
   id: string;
   type: 'CREATE' | 'UPDATE' | 'DELETE' | 'BULK_DELETE';
@@ -27,7 +29,7 @@ export class OfflineQueue {
   }
 
   static async add(mutation: Omit<QueuedMutation, 'id' | 'timestamp'>): Promise<string> {
-    const id = crypto.randomUUID();
+    const id = generateUUID();
     const timestamp = Date.now();
     const item: QueuedMutation = { ...mutation, id, timestamp };
 

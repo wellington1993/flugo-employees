@@ -120,7 +120,7 @@ describe('useStaffForm', () => {
       expect(result.current.form.formState.errors.email).toBeDefined()
     })
 
-    it('mantém erro de validação para e-mail com espaços nas bordas', async () => {
+    it('aceita e-mail com espaços nas bordas após normalização', async () => {
       vi.mocked(container.container.staffRepository.getAll).mockResolvedValue({
         value: [{ id: '1', email: '  ANA@EMPRESA.COM  ', name: 'Ana', departmentId: 'TI', status: 'ACTIVE' }],
         success: true,
@@ -140,7 +140,7 @@ describe('useStaffForm', () => {
       })
 
       expect(returned).toBe(false)
-      expect(result.current.form.formState.errors.email?.message).toBe('Insira um formato de e-mail válido')
+      expect(result.current.form.formState.errors.email?.message).toBe('Este e-mail já está em uso por outro colaborador.')
     })
 
     it('avança para passo 1 quando e-mail é único e dados são válidos', async () => {
@@ -150,7 +150,7 @@ describe('useStaffForm', () => {
         result.current.form.setValue('name', 'Maria Silva')
         result.current.form.setValue('email', 'maria@empresa.com')
         result.current.form.setValue('status', 'ACTIVE')
-        result.current.form.setValue('department', 'TI')
+        result.current.form.setValue('departmentId', 'dept-1')
       })
 
       let returned: boolean | undefined

@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 export const hierarchicalLevels = ['ENTRY', 'MID', 'SENIOR', 'MANAGER'] as const;
 export const staffStatusValues = ['ACTIVE', 'INACTIVE'] as const;
-export const departments = ['TI', 'Design', 'Marketing', 'Produto'] as const;
 export type NormalizedStaffStatus = (typeof staffStatusValues)[number];
 
 export function normalizeStaffEmail(email: string): string {
@@ -25,34 +24,24 @@ export const basicInfoSchema = z.object({
     .min(1, 'O nome é obrigatório')
     .min(3, 'O nome deve ter pelo menos 3 caracteres'),
   email: z.string()
+    .trim()
+    .toLowerCase()
     .min(1, 'O e-mail é obrigatório')
     .email({ error: 'Insira um formato de e-mail válido' }),
   status: z.enum(staffStatusValues, { error: 'Selecione um status válido' }),
 });
 
-// Step 1 schema (for step validation, department field)
+// Step 1 schema
 export const professionalInfoSchema = z.object({
-  department: z
-    .enum(departments, { error: 'Selecione um departamento' }),
-  departmentId: z.string().optional(),
-  role: z.string().min(1, 'O cargo é obrigatório').optional(),
-  admissionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida (AAAA-MM-DD)').optional(),
-  hierarchicalLevel: z.enum(hierarchicalLevels, { error: 'Selecione um nível hierárquico' }).optional(),
+  departmentId: z.string({ error: 'O departamento é obrigatório' }).min(1, 'O departamento é obrigatório'),
+  role: z.string().min(1, 'O cargo é obrigatório'),
+  admissionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida (AAAA-MM-DD)'),
+  hierarchicalLevel: z.enum(hierarchicalLevels, { error: 'Selecione um nível hierárquico' }),
   managerId: z.string().optional().nullable(),
-  baseSalary: z.number().min(0, 'O salário deve ser um valor positivo').optional(),
+  baseSalary: z.number().min(0, 'O salário deve ser um valor positivo'),
 });
 
-// Full staff schema (for forms - requires all fields from both steps)
-export const staffSchema = basicInfoSchema.extend({
-  department: z
-    .enum(departments, { error: 'Selecione um departamento' }),
-  departmentId: z.string().optional(),
-  role: z.string().min(1, 'O cargo é obrigatório').optional(),
-  admissionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida (AAAA-MM-DD)').optional(),
-  hierarchicalLevel: z.enum(hierarchicalLevels, { error: 'Selecione um nível hierárquico' }).optional(),
-  managerId: z.string().optional().nullable(),
-  baseSalary: z.number().min(0, 'O salário deve ser um valor positivo').optional(),
-});
+export const staffSchema = basicInfoSchema.merge(professionalInfoSchema);
 
 export type StaffSchema = z.infer<typeof staffSchema>;
 export const stepSchemas = [basicInfoSchema, professionalInfoSchema];

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { staffSchema, basicInfoSchema, professionalInfoSchema, departments } from './validation'
+import { staffSchema, basicInfoSchema, professionalInfoSchema } from './validation'
 
 const validBasicData = {
   name: 'Ana Lima',
@@ -8,7 +8,11 @@ const validBasicData = {
 }
 
 const validProfessionalData = {
-  department: 'TI' as const,
+  departmentId: 'dept-1',
+  role: 'Analista',
+  admissionDate: '2026-03-01',
+  hierarchicalLevel: 'ENTRY' as const,
+  baseSalary: 2500,
 }
 
 const validFullData = {
@@ -44,15 +48,14 @@ describe('basicInfoSchema (Passo 0)', () => {
     expect(result.error?.issues[0].message).toContain('e-mail válido')
   })
 
-  it('rejeita e-mail com espaços nas bordas (normalização ocorre fora do schema)', () => {
+  it('normaliza e-mail com espaços e caixa alta', () => {
     const result = basicInfoSchema.safeParse({ ...validBasicData, email: '  ANA@EMPRESA.COM  ' })
-    expect(result.success).toBe(false)
-    expect(result.error?.issues[0].message).toContain('e-mail válido')
+    expect(result.success).toBe(true)
+    expect(result.data?.email).toBe('ana@empresa.com')
   })
 
   it('ignora campos de outras etapas', () => {
-    // Deve ser válido mesmo com campos extras, pois o schema só olha para o que conhece
-    const result = basicInfoSchema.safeParse({ ...validBasicData, department: 'TI' })
+    const result = basicInfoSchema.safeParse({ ...validBasicData, departmentId: 'dept-1' })
     expect(result.success).toBe(true)
   })
 })
@@ -62,16 +65,14 @@ describe('professionalInfoSchema (Passo 1)', () => {
     expect(professionalInfoSchema.safeParse(validProfessionalData).success).toBe(true)
   })
 
-  it('rejeita departamento inexistente', () => {
-    const result = professionalInfoSchema.safeParse({ department: 'Inexistente' })
+  it('rejeita quando departamento não é informado', () => {
+    const result = professionalInfoSchema.safeParse({
+      role: 'Analista',
+      admissionDate: '2026-03-01',
+      hierarchicalLevel: 'ENTRY',
+      baseSalary: 2500,
+    })
     expect(result.success).toBe(false)
-    expect(result.error?.issues[0].message).toBe('Selecione um departamento')
-  })
-})
-
-describe('departments', () => {
-  it('contém os 4 departamentos esperados', () => {
-    const expected = ['TI', 'Design', 'Marketing', 'Produto']
-    expect(departments).toEqual(expected)
+    expect(result.error?.issues[0].message).toBe('O departamento é obrigatório')
   })
 })

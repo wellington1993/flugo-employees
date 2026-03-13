@@ -121,12 +121,27 @@ describe('getFriendlyAuthErrorMessage', () => {
   it.each([
     ['auth/invalid-credential', 'E-mail ou senha incorretos. Por favor, tente novamente.'],
     ['auth/invalid-email', 'O formato do e-mail é inválido.'],
+    ['auth/email-already-in-use', 'Este e-mail já está em uso. Tente entrar ou use outro e-mail.'],
+    ['auth/weak-password', 'A senha é muito fraca. Use pelo menos 6 caracteres.'],
     ['auth/user-disabled', 'Esta conta foi desativada. Entre em contato com o suporte.'],
     ['auth/too-many-requests', 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.'],
     ['auth/network-request-failed', 'Não foi possível conectar à internet. Verifique sua conexão e tente novamente.'],
     ['auth/configuration-not-found', 'Serviço de autenticação indisponível no momento. Tente novamente mais tarde.'],
   ])('mapeia %s para mensagem amigável', (code, expectedMessage) => {
     expect(getFriendlyAuthErrorMessage({ code })).toBe(expectedMessage)
+  })
+
+  it('exibe mensagem específica ao tentar cadastrar com e-mail já usado', async () => {
+    vi.spyOn(firebaseLib, 'isFirebaseConfigured', 'get').mockReturnValue(true)
+    vi.mocked(createUserWithEmailAndPassword).mockRejectedValue({ code: 'auth/email-already-in-use' })
+
+    render(<MemoryRouter><Login /></MemoryRouter>)
+    fireEvent.click(screen.getByRole('button', { name: /criar nova conta/i }))
+    fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'user@example.com' } })
+    fireEvent.change(screen.getByLabelText(/senha/i), { target: { value: 'password123' } })
+    fireEvent.click(screen.getByRole('button', { name: /criar conta/i }))
+
+    expect(await screen.findByText('Este e-mail já está em uso. Tente entrar ou use outro e-mail.')).toBeInTheDocument()
   })
 
   it('retorna fallback seguro para erros não mapeados', () => {
