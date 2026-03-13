@@ -112,9 +112,11 @@ export const DepartmentForm: React.FC<DepartmentFormProps> = ({ onCancel, onSave
 
   const removedCount = useMemo(() => {
     if (!currentDepartmentId) return 0
-    const original = new Set(department?.staffIds ?? [])
-    return [...original].filter((id) => !selectedStaffSet.has(id)).length
-  }, [currentDepartmentId, department?.staffIds, selectedStaffSet])
+    const validStaffIds = new Set(allStaff.map(s => s.id))
+    const original = (department?.staffIds ?? []).filter(id => validStaffIds.has(id))
+    const originalSet = new Set(original)
+    return [...originalSet].filter((id) => !selectedStaffSet.has(id)).length
+  }, [currentDepartmentId, department?.staffIds, selectedStaffSet, allStaff])
 
   const transferByDepartment = useMemo(() => {
     const transferMap = new Map<string, number>()
