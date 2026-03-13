@@ -18,6 +18,20 @@ import { type Department } from '@/features/department/types';
 
 const COLLECTION_NAME = 'departments';
 const STAFFS_COLLECTION = 'staffs';
+const normalizeDepartmentName = (name: string) => name.trim().toLowerCase();
+
+async function assertUniqueDepartmentName(name: string, currentId?: string) {
+  const normalized = normalizeDepartmentName(name);
+  const allDepartments = await getDocs(collection(db, COLLECTION_NAME));
+  const duplicate = allDepartments.docs.some((departmentDoc) => {
+    if (currentId && departmentDoc.id === currentId) return false;
+    const currentName = (departmentDoc.data().name as string | undefined) ?? '';
+    return normalizeDepartmentName(currentName) === normalized;
+  });
+  if (duplicate) {
+    throw new Error('DUPLICATE_DEPARTMENT_NAME');
+  }
+}
 
 export const departmentService = {
   async getAll(): Promise<Department[]> {
@@ -39,6 +53,7 @@ export const departmentService = {
   },
 
   async create(data: Omit<Department, 'id' | 'createdAt'>): Promise<string> {
+    await assertUniqueDepartmentName(data.name);
     const docRef = await addDoc(collection(db, COLLECTION_NAME), {
       ...data,
       staffIds: [],
@@ -48,25 +63,50 @@ export const departmentService = {
   },
 
   async update(id: string, data: Partial<Department>): Promise<void> {
+    if (data.name) {
+      await assertUniqueDepartmentName(data.name, id);
+    }
     const docRef = doc(db, COLLECTION_NAME, id);
     await updateDoc(docRef, data);
   },
 
   async delete(id: string): Promise<void> {
-    // 1. Busca todos os colaboradores vinculados a este departamento
     const staffsQuery = query(collection(db, STAFFS_COLLECTION), where('departmentId', '==', id));
     const staffsSnapshot = await getDocs(staffsQuery);
-    
+    if (staffsSnapshot.docs.length > 0) {
+      throw new Error('DEPARTMENT_HAS_STAFF');
+    }
     const batch = writeBatch(db);
-    
-    // 2. Remove a referência de departamento nos colaboradores (limite 500 simplificado aqui)
-    staffsSnapshot.docs.forEach(staffDoc => {
-      batch.update(staffDoc.ref, { departmentId: null });
+    batch.delete(doc(db, COLLECTION_NAME, id));
+    await batch.commit();
+  },
+
+  async transferAndDelete(sourceDepartmentId: string, targetDepartmentId: string): Promise<void> {
+    if (!targetDepartmentId || sourceDepartmentId === targetDepartmentId) {
+      throw new Error('INVALID_TARGET_DEPARTMENT');
+    }
+
+    const staffsQuery = query(collection(db, STAFFS_COLLECTION), where('departmentId', '==', sourceDepartmentId));
+    const staffsSnapshot = await getDocs(staffsQuery);
+    const hasActive = staffsSnapshot.docs.some((d) => d.data().status === 'ACTIVE');
+    if (hasActive && !targetDepartmentId) {
+      throw new Error('ACTIVE_STAFF_TRANSFER_REQUIRED');
+    }
+
+    const batch = writeBatch(db);
+    const movedStaffIds: string[] = [];
+
+    staffsSnapshot.docs.forEach((staffDoc) => {
+      batch.update(staffDoc.ref, { departmentId: targetDepartmentId });
+      movedStaffIds.push(staffDoc.id);
     });
 
-    // 3. Deleta o departamento
-    batch.delete(doc(db, COLLECTION_NAME, id));
-
+    const sourceRef = doc(db, COLLECTION_NAME, sourceDepartmentId);
+    const targetRef = doc(db, COLLECTION_NAME, targetDepartmentId);
+    const targetSnap = await getDoc(targetRef);
+    const targetStaffIds = (targetSnap.exists() ? (targetSnap.data().staffIds as string[] | undefined) : []) ?? [];
+    batch.update(targetRef, { staffIds: Array.from(new Set([...targetStaffIds, ...movedStaffIds])) });
+    batch.delete(sourceRef);
     await batch.commit();
   },
 };

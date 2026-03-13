@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQueryClient } from '@tanstack/react-query'
 import { staffSchema, stepSchemas, type StaffSchema } from '@/features/staff/validation'
 import { staffService } from '@/services/staffs'
 import { departmentService } from '@/services/departments'
@@ -12,6 +13,7 @@ const STEPS = ['Informações Básicas', 'Informações Profissionais']
 
 export function useStaffForm(staffId?: string) {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [activeStep, setActiveStep] = useState(0)
   const [isPending, setIsPending] = useState(false)
   const [toast, setToast] = useState<{ message: string; severity: 'success' | 'error' } | null>(null)
@@ -113,6 +115,9 @@ export function useStaffForm(staffId?: string) {
       } else {
         await staffService.create(data)
       }
+
+      await queryClient.invalidateQueries({ queryKey: ['staffs'] })
+      await queryClient.refetchQueries({ queryKey: ['staffs'], type: 'active' })
 
       submittedRef.current = true
       localStorage.removeItem(draftKey)

@@ -11,7 +11,8 @@ import {
   InputLabel, 
   Select, 
   MenuItem,
-  CircularProgress
+  CircularProgress,
+  Alert
 } from '@mui/material';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -32,6 +33,7 @@ export const DepartmentForm: React.FC<DepartmentFormProps> = ({ open, onClose, o
   type DepartmentFormData = z.input<typeof departmentSchema>;
   const [managers, setManagers] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const { control, handleSubmit, reset, formState: { errors } } = useForm<DepartmentFormData>({
     resolver: zodResolver(departmentSchema),
@@ -75,6 +77,7 @@ export const DepartmentForm: React.FC<DepartmentFormProps> = ({ open, onClose, o
 
   const onSubmit = async (data: DepartmentFormData) => {
     setLoading(true);
+    setErrorMessage(null);
     try {
       const payload: Omit<Department, 'id' | 'createdAt'> = {
         name: data.name,
@@ -89,6 +92,12 @@ export const DepartmentForm: React.FC<DepartmentFormProps> = ({ open, onClose, o
       }
       onSaved();
       onClose();
+    } catch (error) {
+      if (error instanceof Error && error.message === 'DUPLICATE_DEPARTMENT_NAME') {
+        setErrorMessage('Já existe um departamento com esse nome.');
+      } else {
+        setErrorMessage('Não foi possível salvar o departamento.');
+      }
     } finally {
       setLoading(false);
     }
@@ -99,6 +108,7 @@ export const DepartmentForm: React.FC<DepartmentFormProps> = ({ open, onClose, o
       <DialogTitle>{department ? 'Editar Departamento' : 'Novo Departamento'}</DialogTitle>
       <form onSubmit={handleSubmit(onSubmit)}>
         <DialogContent>
+          {errorMessage && <Alert severity="error" sx={{ mb: 2 }}>{errorMessage}</Alert>}
           <Box display="flex" flexDirection="column" gap={2}>
             <Controller
               name="name"

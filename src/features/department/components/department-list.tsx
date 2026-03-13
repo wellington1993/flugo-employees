@@ -11,7 +11,11 @@ import {
   IconButton, 
   Typography, 
   Box,
-  CircularProgress
+  CircularProgress,
+  Alert,
+  Snackbar,
+  TextField,
+  MenuItem
 } from '@mui/material';
 import { Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material';
 import { departmentService } from '@/services/departments';
@@ -22,6 +26,9 @@ export const DepartmentList: React.FC<{ onEdit: (dept: Department) => void; onAd
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [transferTargetId, setTransferTargetId] = useState('');
+  const [requiresTransfer, setRequiresTransfer] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const loadDepartments = async () => {
     setLoading(true);
@@ -39,9 +46,33 @@ export const DepartmentList: React.FC<{ onEdit: (dept: Department) => void; onAd
 
   const handleDelete = async () => {
     if (deleteId) {
-      await departmentService.delete(deleteId);
-      setDeleteId(null);
-      loadDepartments();
+      try {
+        if (requiresTransfer) {
+          if (!transferTargetId) {
+            setFeedback({ type: 'error', message: 'Selecione um departamento de destino para continuar.' });
+            return;
+          }
+          await departmentService.transferAndDelete(deleteId, transferTargetId);
+          setFeedback({ type: 'success', message: 'Departamento excluído com transferência concluída.' });
+        } else {
+          await departmentService.delete(deleteId);
+          setFeedback({ type: 'success', message: 'Departamento excluído com sucesso.' });
+        }
+        setDeleteId(null);
+        setTransferTargetId('');
+        setRequiresTransfer(false);
+        loadDepartments();
+      } catch (error) {
+        if (error instanceof Error && error.message === 'DEPARTMENT_HAS_STAFF') {
+          setRequiresTransfer(true);
+          setFeedback({
+            type: 'error',
+            message: 'Este departamento possui colaboradores ativos. Selecione um departamento de destino para transferir em lote antes de excluir.',
+          });
+          return;
+        }
+        setFeedback({ type: 'error', message: 'Não foi possível excluir o departamento.' });
+      }
     }
   };
 
@@ -95,11 +126,45 @@ export const DepartmentList: React.FC<{ onEdit: (dept: Department) => void; onAd
 
       <DeleteConfirmDialog
         open={!!deleteId}
-        onClose={() => setDeleteId(null)}
+        onClose={() => {
+          setDeleteId(null)
+          setTransferTargetId('')
+          setRequiresTransfer(false)
+        }}
         onConfirm={handleDelete}
         title="Excluir Departamento"
-        description="Tem certeza que deseja excluir este departamento? Esta ação não pode ser desfeita."
+        description={requiresTransfer
+          ? 'Selecione o departamento de destino para transferir os colaboradores e concluir a exclusão.'
+          : 'Tem certeza que deseja excluir este departamento? Esta ação não pode ser desfeita.'}
       />
+      {requiresTransfer && (
+        <Box mt={2} maxWidth={360}>
+          <TextField
+            select
+            fullWidth
+            size="small"
+            label="Departamento de destino"
+            value={transferTargetId}
+            onChange={(e) => setTransferTargetId(e.target.value)}
+          >
+            {(departments || [])
+              .filter((d) => d.id && d.id !== deleteId)
+              .map((d) => (
+                <MenuItem key={d.id} value={d.id}>
+                  {d.name}
+                </MenuItem>
+              ))}
+          </TextField>
+        </Box>
+      )}
+      <Snackbar
+        open={!!feedback}
+        autoHideDuration={4000}
+        onClose={() => setFeedback(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        {feedback ? <Alert severity={feedback.type}>{feedback.message}</Alert> : <></>}
+      </Snackbar>
     </Box>
   );
 };

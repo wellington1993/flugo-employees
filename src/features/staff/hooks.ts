@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { staffService } from '@/services/staffs'
 import { departmentService } from '@/services/departments'
 import { type Staff } from './types'
+import { type Department } from '../department/types'
 
 export function useStaffs() {
   return useQuery({
@@ -14,6 +15,26 @@ export function useDepartments() {
   return useQuery({
     queryKey: ['departments'],
     queryFn: () => departmentService.getAll(),
+  })
+}
+
+export function useCreateDepartment() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: Omit<Department, 'id'>) => departmentService.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['departments'] })
+    },
+  })
+}
+
+export function useDeleteDepartment() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => departmentService.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['departments'] })
+    },
   })
 }
 

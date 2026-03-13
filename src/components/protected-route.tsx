@@ -4,16 +4,12 @@ import { Box, CircularProgress } from '@mui/material'
 import { useAuthState } from 'react-firebase-hooks/auth'
 import { auth, isFirebaseConfigured } from '@/libs/firebase'
 
-const AUTH_BYPASS_KEY = 'flugo_auth_bypass'
-
 interface ProtectedRouteProps {
   children: ReactNode
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const bypassEnabled = localStorage.getItem(AUTH_BYPASS_KEY) === '1'
-
-  if (!isFirebaseConfigured || bypassEnabled) {
+  if (!isFirebaseConfigured) {
     return <>{children}</>
   }
 
