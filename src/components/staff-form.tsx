@@ -13,16 +13,20 @@ import {
   Typography,
   useMediaQuery,
   useTheme,
+  MenuItem,
 } from '@mui/material'
 import CheckIcon from '@mui/icons-material/Check'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { Controller } from 'react-hook-form'
-import { departments } from '@/features/staff/validation'
 import { useStaffForm } from '@/features/staff/use-staff-form'
 import { FlugoTextField } from './form/flugo-text-field'
 import { FlugoSelect } from './form/flugo-select'
 
-export function StaffForm() {
+interface StaffFormProps {
+  staffId?: string;
+}
+
+export function StaffForm({ staffId }: StaffFormProps) {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
@@ -36,7 +40,9 @@ export function StaffForm() {
     handleNext: handleNextHook,
     handleBack,
     currentProgress,
-  } = useStaffForm()
+    departments = [],
+    managers = [],
+  } = useStaffForm(staffId)
 
   const handleNext = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
@@ -46,7 +52,18 @@ export function StaffForm() {
     }
   }
 
-  const isLastStep = activeStep === steps.length - 1
+  const isLastStep = activeStep === (steps?.length || 2) - 1
+
+  const departmentOptions = (departments || []).map(d => ({ label: d.name, value: d.id || '' }));
+  const managerOptions = (managers || []).map(m => ({ label: m.name, value: m.id }));
+  const hierarchicalLevelOptions = [
+    { value: 'ENTRY', label: 'Júnior' },
+    { value: 'MID', label: 'Pleno' },
+    { value: 'SENIOR', label: 'Sênior' },
+    { value: 'LEAD', label: 'Líder' },
+    { value: 'MANAGER', label: 'Gerente' },
+    { value: 'DIRECTOR', label: 'Diretor' },
+  ]
 
   return (
     <Box 
@@ -58,12 +75,11 @@ export function StaffForm() {
         p: isMobile ? 1 : 2 
       }}
     >
-      {/* Barra de Progresso Superior */}
       <Box>
         <Stack direction="row" alignItems="center" gap={2} mb={1}>
           <LinearProgress
             variant="determinate"
-            value={currentProgress || (activeStep === 1 ? 50 : 0)}
+            value={currentProgress}
             sx={{ 
               flex: 1, 
               height: 8, 
@@ -73,11 +89,11 @@ export function StaffForm() {
             }}
           />
           <Typography variant="caption" fontWeight={700} color="primary" sx={{ minWidth: 40 }}>
-            {activeStep === 0 ? '0%' : activeStep === 1 ? '50%' : '100%'}
+            {Math.round(currentProgress || 0)}%
           </Typography>
         </Stack>
         <Typography variant="caption" color="text.secondary">
-          Passo {activeStep + 1} de {steps.length}: {steps[activeStep]}
+          Passo {activeStep + 1} de {steps?.length || 2}: {steps?.[activeStep] || ''}
         </Typography>
       </Box>
 
@@ -87,7 +103,6 @@ export function StaffForm() {
         gap={isMobile ? 4 : 6}
         sx={{ flex: 1 }}
       >
-        {/* Stepper Lateral/Superior */}
         <Stepper 
           activeStep={activeStep} 
           orientation={isMobile ? 'horizontal' : 'vertical'} 
@@ -96,7 +111,7 @@ export function StaffForm() {
             '& .MuiStepLabel-label': { fontSize: 13, fontWeight: 500 }
           }}
         >
-          {steps.map((label, index) => (
+          {(steps || []).map((label, index) => (
             <Step key={label} completed={activeStep > index}>
               <StepLabel
                 StepIconComponent={
@@ -125,7 +140,6 @@ export function StaffForm() {
           ))}
         </Stepper>
 
-        {/* Conteúdo do Formulário */}
         <Box flex={1} sx={{ maxWidth: 600 }}>
           <Typography variant="h6" fontWeight={700} color="text.primary" mb={4}>
             {activeStep === 0 ? 'Informações Básicas' : 'Informações Profissionais'}
@@ -185,15 +199,18 @@ export function StaffForm() {
               />
             </Stack>
 
-            <Box sx={{ display: activeStep === 1 ? 'block' : 'none' }}>
+            <Stack 
+              spacing={3} 
+              sx={{ display: activeStep === 1 ? 'flex' : 'none' }}
+            >
               <Controller
-                name="department"
+                name="departmentId"
                 control={form.control}
                 render={({ field, fieldState }) => (
                   <FlugoSelect
                     {...field}
                     label="Selecione o Departamento"
-                    options={departments}
+                    options={departmentOptions}
                     autoFocus={activeStep === 1}
                     error={!!fieldState.error}
                     helperText={fieldState.error?.message}
@@ -201,14 +218,90 @@ export function StaffForm() {
                   />
                 )}
               />
-            </Box>
+              <Controller
+                name="role"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <FlugoTextField
+                    {...field}
+                    label="Cargo"
+                    placeholder="ex: Desenvolvedor Senior"
+                    error={!!fieldState.error}
+                    helperText={fieldState.error?.message}
+                    fullWidth
+                  />
+                )}
+              />
+              <Stack direction={isMobile ? 'column' : 'row'} spacing={2}>
+                <Controller
+                  name="admissionDate"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <FlugoTextField
+                      {...field}
+                      label="Data de Admissão"
+                      type="date"
+                      error={!!fieldState.error}
+                      helperText={fieldState.error?.message}
+                      fullWidth
+                    />
+                  )}
+                />
+                <Controller
+                  name="hierarchicalLevel"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <FlugoSelect
+                      {...field}
+                      label="Nível Hierárquico"
+                      options={hierarchicalLevelOptions}
+                      error={!!fieldState.error}
+                      helperText={fieldState.error?.message}
+                      fullWidth
+                    />
+                  )}
+                />
+              </Stack>
+              <Controller
+                name="managerId"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <FlugoSelect
+                    {...field}
+                    label="Gestor Responsável"
+                    options={managerOptions}
+                    error={!!fieldState.error}
+                    helperText={fieldState.error?.message}
+                    fullWidth
+                  >
+                     <MenuItem value=""><em>Nenhum</em></MenuItem>
+                     {managerOptions.map(opt => <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>)}
+                  </FlugoSelect>
+                )}
+              />
+              <Controller
+                name="baseSalary"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <FlugoTextField
+                    {...field}
+                    label="Salário Base"
+                    type="number"
+                    placeholder="0.00"
+                    onChange={(e) => field.onChange(Number(e.target.value))}
+                    error={!!fieldState.error}
+                    helperText={fieldState.error?.message}
+                    fullWidth
+                  />
+                )}
+              />
+            </Stack>
             
             <button type="submit" style={{ display: 'none' }} aria-hidden="true" />
           </form>
         </Box>
       </Box>
 
-      {/* Ações de Navegação */}
       <Stack 
         direction="row" 
         justifyContent="space-between" 

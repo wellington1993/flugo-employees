@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   Avatar,
   Box,
@@ -14,46 +14,103 @@ import {
   TablePagination,
   TableRow,
   TableSortLabel,
-  Tooltip,
   Typography,
   Skeleton,
   useMediaQuery,
   useTheme,
+  Checkbox,
+  TextField,
+  MenuItem,
+  Alert,
+  Snackbar,
   type TableCellProps,
 } from '@mui/material'
-import SyncIcon from '@mui/icons-material/Sync'
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1'
-import { visuallyHidden } from '@mui/utils'
+import DeleteIcon from '@mui/icons-material/Delete'
 import { Link } from 'react-router-dom'
-import { useStaffs, useSyncPending } from '@/features/staff/hooks'
+import { useStaffs, useDepartments, useBulkDeleteStaff } from '@/features/staff/hooks'
 import { useSortTable } from '@/hooks/use-sort-table'
 import { getComparator } from '@/helpers/table-sorting'
 import type { Staff } from '@/features/staff/types'
+import { DeleteConfirmDialog } from './delete-confirm-dialog'
 
-const columns: { id: keyof Staff; label: string; align?: TableCellProps['align'] }[] = [
+const columns: { id: keyof Staff | 'actions'; label: string; align?: TableCellProps['align'] }[] = [
   { id: 'name', label: 'Colaborador' },
   { id: 'email', label: 'E-mail', align: 'left' },
-  { id: 'department', label: 'Departamento', align: 'left' },
+  { id: 'departmentId', label: 'Departamento', align: 'left' },
+  { id: 'role', label: 'Cargo', align: 'left' },
   { id: 'status', label: 'Status', align: 'center' },
 ]
 
 export function StaffList() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
-  const { data: staffs, isLoading, isError } = useStaffs()
+  const { data: staffs, isLoading, refetch } = useStaffs()
+  const { data: departments } = useDepartments()
+  const { mutateAsync: bulkDelete } = useBulkDeleteStaff()
+
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(10)
   const { order, orderBy, createSortHandler } = useSortTable('name', setPage)
-  const { pendingCount, sync } = useSyncPending()
+  
+  const [selected, setSelected] = useState<string[]>([])
+  const [filters, setFilters] = useState({ name: '', email: '', departmentId: '' })
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
-  useEffect(() => {
-    if (pendingCount > 0) {
-      sync().catch(console.error)
-    }
-  }, [pendingCount, sync])
+  const filteredStaffs = useMemo(() => {
+    return (staffs ?? []).filter(s => {
+      const matchName = (s.name || '').toLowerCase().includes(filters.name.toLowerCase())
+      const matchEmail = (s.email || '').toLowerCase().includes(filters.email.toLowerCase())
+      const matchDept = !filters.departmentId || s.departmentId === filters.departmentId
+      return matchName && matchEmail && matchDept
+    })
+  }, [staffs, filters])
 
-  const sorted = (staffs ?? []).slice().sort(getComparator(order, orderBy))
+  const sorted = useMemo(() => {
+    return filteredStaffs.slice().sort(getComparator(order, orderBy))
+  }, [filteredStaffs, order, orderBy])
+
   const paginated = sorted.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+
+  const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.checked) {
+      setSelected(paginated.map(n => n.id))
+      return
+    }
+    setSelected([])
+  }
+
+  const handleSelectOne = (id: string) => {
+    setSelected(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    )
+  }
+
+  const handleDeleteSelected = async () => {
+    if (selected.length === 0) return
+    setIsDeleting(true)
+    try {
+      await bulkDelete(selected)
+      await refetch()
+      setSelected([])
+      setConfirmDelete(false)
+      setFeedback({
+        type: 'success',
+        message: `${selected.length} colaborador(es) excluído(s) com sucesso.`,
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha ao excluir colaboradores.'
+      setFeedback({ type: 'error', message })
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const getDepartmentName = (id: string) => {
+    return (departments || []).find(d => d.id === id)?.name || '-'
+  }
 
   return (
     <Box sx={{ p: isMobile ? 1 : 2 }}>
@@ -72,67 +129,101 @@ export function StaffList() {
             Gerencie e visualize a equipe da sua empresa.
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          component={Link}
-          to="/staffs/new"
-          startIcon={<PersonAddAlt1Icon />}
-          sx={{ 
-            px: 3, 
-            py: 1.2, 
-            borderRadius: 2, 
-            fontWeight: 600, 
-            boxShadow: 0,
-            '&:hover': { boxShadow: theme.shadows[2] }
-          }}
-          fullWidth={isMobile}
-        >
-          Novo Colaborador
-        </Button>
+        <Stack direction="row" spacing={2}>
+          {selected.length > 0 && (
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<DeleteIcon />}
+              onClick={() => setConfirmDelete(true)}
+              sx={{ borderRadius: 2, fontWeight: 600 }}
+            >
+              Excluir ({selected.length})
+            </Button>
+          )}
+          <Button
+            variant="contained"
+            component={Link}
+            to="/staffs/new"
+            startIcon={<PersonAddAlt1Icon />}
+            sx={{ 
+              px: 3, 
+              py: 1.2, 
+              borderRadius: 2, 
+              fontWeight: 600, 
+              boxShadow: 0,
+              '&:hover': { boxShadow: theme.shadows[2] }
+            }}
+            fullWidth={isMobile}
+          >
+            Novo Colaborador
+          </Button>
+        </Stack>
       </Stack>
+
+      <Paper elevation={0} variant="outlined" sx={{ p: 2, mb: 3, borderRadius: 3 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' }, gap: 2 }}>
+           <TextField
+            label="Filtrar por nome"
+            size="small"
+            value={filters.name}
+            onChange={(e) => setFilters(f => ({ ...f, name: e.target.value }))}
+            sx={{ minWidth: 200 }}
+          />
+          <TextField
+            label="Filtrar por e-mail"
+            size="small"
+            value={filters.email}
+            onChange={(e) => setFilters(f => ({ ...f, email: e.target.value }))}
+            sx={{ minWidth: 200 }}
+          />
+          <TextField
+            select
+            label="Departamento"
+            size="small"
+            value={filters.departmentId}
+            onChange={(e) => setFilters(f => ({ ...f, departmentId: e.target.value }))}
+            sx={{ minWidth: 150 }}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            {(departments || []).map(d => (
+              <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>
+            ))}
+          </TextField>
+        </Box>
+      </Paper>
 
       <TableContainer 
         component={Paper} 
         elevation={0} 
         variant="outlined" 
-        sx={{ 
-          borderRadius: 3, 
-          overflow: 'hidden',
-          border: '1px solid',
-          borderColor: 'divider'
-        }}
+        sx={{ borderRadius: 3, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}
       >
         <Table sx={{ minWidth: 650 }}>
           <TableHead>
             <TableRow sx={{ bgcolor: 'grey.50' }}>
+              <TableCell padding="checkbox">
+                <Checkbox
+                  indeterminate={selected.length > 0 && selected.length < paginated.length}
+                  checked={paginated.length > 0 && selected.length === paginated.length}
+                  onChange={handleSelectAll}
+                />
+              </TableCell>
               {columns.map((col) => (
                 <TableCell
                   key={col.id}
                   align={col.align}
-                  sx={{
-                    fontWeight: 700,
-                    color: 'text.secondary',
-                    fontSize: 12,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    display:
-                      col.id === 'email' || col.id === 'department'
-                        ? { xs: 'none', md: 'table-cell' }
-                        : 'table-cell',
-                  }}
+                  sx={{ fontWeight: 700, color: 'text.secondary', fontSize: 12, textTransform: 'uppercase' }}
                 >
-                  <TableSortLabel
-                    active={orderBy === col.id}
-                    direction={orderBy === col.id ? order : 'asc'}
-                    onClick={createSortHandler(col.id)}
-                  >
-                    {col.label}
-                    {orderBy === col.id && (
-                      <Box component="span" sx={visuallyHidden}>
-                        {order === 'desc' ? 'decrescente' : 'crescente'}
-                      </Box>
-                    )}
-                  </TableSortLabel>
+                  {col.id !== 'actions' ? (
+                    <TableSortLabel
+                      active={orderBy === col.id}
+                      direction={orderBy === col.id ? order : 'asc'}
+                      onClick={createSortHandler(col.id as keyof Staff)}
+                    >
+                      {col.label}
+                    </TableSortLabel>
+                  ) : col.label}
                 </TableCell>
               ))}
             </TableRow>
@@ -141,137 +232,66 @@ export function StaffList() {
             {isLoading &&
               Array.from(new Array(5)).map((_, index) => (
                 <TableRow key={index}>
-                  <TableCell>
-                    <Stack direction="row" alignItems="center" gap={2}>
-                      <Skeleton variant="circular" width={40} height={40} />
-                      <Skeleton variant="text" width={140} height={24} />
-                    </Stack>
-                  </TableCell>
-                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
-                    <Skeleton variant="text" width={200} />
-                  </TableCell>
-                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
-                    <Skeleton variant="text" width={100} />
-                  </TableCell>
-                  <TableCell align="center">
-                    <Skeleton variant="rounded" width={80} height={28} />
-                  </TableCell>
+                  <TableCell padding="checkbox"><Skeleton variant="rectangular" width={20} height={20} /></TableCell>
+                  <TableCell><Skeleton variant="text" width={140} height={24} /></TableCell>
+                  <TableCell><Skeleton variant="text" width={150} /></TableCell>
+                  <TableCell><Skeleton variant="text" width={100} /></TableCell>
+                  <TableCell><Skeleton variant="text" width={100} /></TableCell>
+                  <TableCell align="center"><Skeleton variant="rounded" width={80} height={28} /></TableCell>
                 </TableRow>
               ))}
 
-            {isError && (
-              <TableRow>
-                <TableCell colSpan={4} align="center" sx={{ py: 8 }}>
-                  <Typography variant="body1" color="error" fontWeight={500}>
-                    Ops! Não conseguimos carregar a lista.
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Verifique sua conexão e tente atualizar a página.
-                  </Typography>
+            {!isLoading && paginated.map((row) => (
+              <TableRow key={row.id} hover selected={selected.includes(row.id)}>
+                <TableCell padding="checkbox">
+                  <Checkbox checked={selected.includes(row.id)} onChange={() => handleSelectOne(row.id)} />
                 </TableCell>
-              </TableRow>
-            )}
-
-            {!isLoading && !isError && !sorted.length && (
-              <TableRow>
-                <TableCell colSpan={4} align="center" sx={{ py: 10 }}>
-                  <Typography variant="h6" color="text.secondary" fontWeight={500}>
-                    Nenhum colaborador encontrado.
-                  </Typography>
-                  <Typography variant="body2" color="text.disabled">
-                    Clique em "Novo Colaborador" para começar.
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            )}
-
-            {paginated.map((row) => (
-              <TableRow key={row.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                 <TableCell>
                   <Stack direction="row" alignItems="center" gap={2}>
-                    <Avatar 
-                      sx={{ 
-                        width: 40, 
-                        height: 40, 
-                        fontSize: 15, 
-                        fontWeight: 700,
-                        bgcolor: 'primary.main',
-                        color: 'primary.contrastText'
-                      }}
-                    >
-                      {row.name
-                        .split(' ')
-                        .slice(0, 2)
-                        .map((w) => w[0])
-                        .join('')
-                        .toUpperCase()}
+                    <Avatar sx={{ width: 40, height: 40, bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 700 }}>
+                      {(row.name || '??').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                     </Avatar>
-                    <Box>
-                      <Typography variant="subtitle2" fontWeight={700} color="text.primary">
-                        {row.name}
-                      </Typography>
-                      {isMobile && (
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                          {row.email}
-                        </Typography>
-                      )}
-                    </Box>
+                    <Typography variant="subtitle2" fontWeight={700}>{row.name}</Typography>
                   </Stack>
                 </TableCell>
-                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, color: 'text.secondary' }}>
-                  {row.email}
-                </TableCell>
-                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, color: 'text.secondary' }}>
-                  {row.department}
-                </TableCell>
+                <TableCell>{row.email}</TableCell>
+                <TableCell>{getDepartmentName(row.departmentId)}</TableCell>
+                <TableCell>{row.role}</TableCell>
                 <TableCell align="center">
-                  {row._pendingSync ? (
-                    <Tooltip title="Salvo localmente, aguardando conexão">
-                      <Chip
-                        icon={<SyncIcon sx={{ fontSize: 14 }} />}
-                        label="Sincronizando"
-                        color="warning"
-                        size="small"
-                        variant="outlined"
-                        sx={{ fontWeight: 600, borderStyle: 'dashed' }}
-                      />
-                    </Tooltip>
-                  ) : (
-                    <Chip
-                      label={row.status === 'ACTIVE' ? 'Ativo' : 'Inativo'}
-                      color={row.status === 'ACTIVE' ? 'success' : 'default'}
-                      size="small"
-                      variant="filled"
-                      sx={{ 
-                        fontWeight: 700, 
-                        fontSize: 11,
-                        bgcolor: row.status === 'ACTIVE' ? 'success.light' : 'grey.100',
-                        color: row.status === 'ACTIVE' ? 'success.dark' : 'grey.600'
-                      }}
-                    />
-                  )}
+                  <Chip label={row.status === 'ACTIVE' ? 'Ativo' : 'Inativo'} color={row.status === 'ACTIVE' ? 'success' : 'default'} size="small" />
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-        
         <TablePagination
           component="div"
           count={sorted.length}
           page={page}
           rowsPerPage={rowsPerPage}
           onPageChange={(_, newPage) => setPage(newPage)}
-          onRowsPerPageChange={(e) => {
-            setRowsPerPage(parseInt(e.target.value, 10))
-            setPage(0)
-          }}
+          onRowsPerPageChange={(e) => setRowsPerPage(parseInt(e.target.value, 10))}
           rowsPerPageOptions={[5, 10, 25]}
-          labelRowsPerPage={isMobile ? '' : 'Linhas por página:'}
-          labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
-          sx={{ borderTop: '1px solid', borderColor: 'divider' }}
         />
       </TableContainer>
+
+      <DeleteConfirmDialog
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={handleDeleteSelected}
+        title="Excluir Colaboradores"
+        description={`Tem certeza que deseja excluir ${selected.length} colaboradores selecionados?`}
+        loading={isDeleting}
+      />
+
+      <Snackbar
+        open={!!feedback}
+        autoHideDuration={4000}
+        onClose={() => setFeedback(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        {feedback ? <Alert severity={feedback.type}>{feedback.message}</Alert> : <></>}
+      </Snackbar>
     </Box>
   )
 }
