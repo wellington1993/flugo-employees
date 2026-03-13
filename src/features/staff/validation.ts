@@ -30,6 +30,7 @@ export const basicInfoSchema = z.object({
   status: z.enum(staffStatusValues, { error: 'Selecione um status válido' }),
 });
 
+// Step 1 schema (for step validation, department field)
 export const professionalInfoSchema = z.object({
   department: z
     .enum(departments, { error: 'Selecione um departamento' }),
@@ -41,6 +42,17 @@ export const professionalInfoSchema = z.object({
   baseSalary: z.number().min(0, 'O salário deve ser um valor positivo').optional(),
 });
 
-export const staffSchema = basicInfoSchema.merge(professionalInfoSchema);
+// Full staff schema (for forms - requires all fields from both steps)
+export const staffSchema = basicInfoSchema.extend({
+  department: z
+    .enum(departments, { error: 'Selecione um departamento' }),
+  departmentId: z.string().optional(),
+  role: z.string().min(1, 'O cargo é obrigatório').optional(),
+  admissionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida (AAAA-MM-DD)').optional(),
+  hierarchicalLevel: z.enum(hierarchicalLevels, { error: 'Selecione um nível hierárquico' }).optional(),
+  managerId: z.string().optional().nullable(),
+  baseSalary: z.number().min(0, 'O salário deve ser um valor positivo').optional(),
+});
+
 export type StaffSchema = z.infer<typeof staffSchema>;
 export const stepSchemas = [basicInfoSchema, professionalInfoSchema];

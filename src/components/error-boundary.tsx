@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { Box, Button, Typography } from '@mui/material'
+import { hasAttemptedChunkRecovery, isChunkLoadError } from '@/helpers/chunk-recovery'
 
 type Props = { children: ReactNode }
 type State = { error: Error | null }
@@ -17,6 +18,8 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.error) {
+      const shouldShowChunkMessage = isChunkLoadError(this.state.error) && hasAttemptedChunkRecovery()
+
       return (
         <Box
           display="flex"
@@ -32,7 +35,9 @@ export class ErrorBoundary extends Component<Props, State> {
             Algo deu errado
           </Typography>
           <Typography color="text.secondary" maxWidth={400}>
-            {this.state.error.message || 'Ocorreu um erro inesperado.'}
+            {shouldShowChunkMessage
+              ? 'Não foi possível atualizar os arquivos do aplicativo automaticamente. Verifique sua conexão e tente recarregar novamente em instantes.'
+              : this.state.error.message || 'Ocorreu um erro inesperado.'}
           </Typography>
           <Button variant="contained" onClick={() => window.location.reload()}>
             Recarregar página

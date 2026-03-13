@@ -1,13 +1,21 @@
 import { test, expect } from '@playwright/test'
 import { cleanupTestRecords } from './utils/cleanup'
+import { ensureAuthenticated } from './utils/auth'
 
 test.afterEach(async () => {
   await cleanupTestRecords()
 })
 
+async function clickNovoColaborador(page: import('@playwright/test').Page) {
+  await page.locator('a:has-text("Novo Colaborador"),button:has-text("Novo Colaborador")').first().click()
+}
+
 test.describe('Listagem de colaboradores', () => {
+  test.beforeEach(async ({ page }) => {
+    await ensureAuthenticated(page)
+  })
+
   test('exibe tabela com as colunas corretas', async ({ page }) => {
-    await page.goto('/staffs')
     await expect(page.getByRole('heading', { name: 'Colaboradores' })).toBeVisible({ timeout: 15000 })
     await expect(page.getByRole('table')).toBeVisible()
     await expect(page.getByRole('columnheader', { name: 'Colaborador' })).toBeVisible()
@@ -19,7 +27,7 @@ test.describe('Listagem de colaboradores', () => {
 
 test.describe('Cadastro de colaborador', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/staffs')
+    await ensureAuthenticated(page)
     await page.evaluate(() => localStorage.clear())
   })
 
@@ -28,7 +36,7 @@ test.describe('Cadastro de colaborador', () => {
     const name = `Teste Ativo ${suffix}`
     const email = `ativo-${suffix}@empresa.com`
 
-    await page.getByRole('link', { name: /novo colaborador/i }).click()
+    await clickNovoColaborador(page)
     await page.getByLabel(/nome completo/i).fill(name)
     await page.getByLabel(/e-mail corporativo/i).fill(email)
     await page.getByRole('button', { name: /Próximo/i }).click()
@@ -48,7 +56,7 @@ test.describe('Cadastro de colaborador', () => {
     const name = `Teste Inativo ${suffix}`
     const email = `inativo-${suffix}@empresa.com`
 
-    await page.getByRole('link', { name: /novo colaborador/i }).click()
+    await clickNovoColaborador(page)
     await page.getByLabel(/nome completo/i).fill(name)
     await page.getByLabel(/e-mail corporativo/i).fill(email)
     await page.getByRole('switch').click()
@@ -63,7 +71,7 @@ test.describe('Cadastro de colaborador', () => {
   })
 
   test('bloqueia avanço com nome menor que 3 caracteres', async ({ page }) => {
-    await page.getByRole('link', { name: /novo colaborador/i }).click()
+    await clickNovoColaborador(page)
     await page.getByLabel(/nome completo/i).fill('AB')
     await page.getByLabel(/e-mail corporativo/i).fill('valido@empresa.com')
     await page.getByRole('button', { name: /Próximo/i }).click()
@@ -73,7 +81,7 @@ test.describe('Cadastro de colaborador', () => {
   })
 
   test('bloqueia avanço com e-mail inválido', async ({ page }) => {
-    await page.getByRole('link', { name: /novo colaborador/i }).click()
+    await clickNovoColaborador(page)
     await page.getByLabel(/nome completo/i).fill('Nome Válido')
     await page.getByLabel(/e-mail corporativo/i).fill('nao-e-email')
     await page.getByRole('button', { name: /Próximo/i }).click()
@@ -86,7 +94,7 @@ test.describe('Cadastro de colaborador', () => {
     const name = 'Nome Preservado'
     const email = `preservado-${Date.now()}@empresa.com`
 
-    await page.getByRole('link', { name: /novo colaborador/i }).click()
+    await clickNovoColaborador(page)
     await page.getByLabel(/nome completo/i).fill(name)
     await page.getByLabel(/e-mail corporativo/i).fill(email)
     await page.getByRole('button', { name: /Próximo/i }).click()
@@ -101,7 +109,7 @@ test.describe('Cadastro de colaborador', () => {
     const suffix = Date.now()
     const email = `dup-${suffix}@empresa.com`
 
-    await page.getByRole('link', { name: /novo colaborador/i }).click()
+    await clickNovoColaborador(page)
     await page.getByLabel(/nome completo/i).fill(`Primeiro ${suffix}`)
     await page.getByLabel(/e-mail corporativo/i).fill(email)
     await page.getByRole('button', { name: /Próximo/i }).click()
@@ -113,7 +121,7 @@ test.describe('Cadastro de colaborador', () => {
     // Aguarda o registro aparecer na lista (garante cache TanStack Query populado)
     await expect(page.getByText(`Primeiro ${suffix}`)).toBeVisible({ timeout: 15000 })
     // Navega via SPA para preservar o cache de staffs
-    await page.getByRole('link', { name: /novo colaborador/i }).click()
+    await clickNovoColaborador(page)
     await page.getByLabel(/nome completo/i).fill(`Segundo ${suffix}`)
     await page.getByLabel(/e-mail corporativo/i).fill(email)
     await page.getByRole('button', { name: /Próximo/i }).click()
@@ -124,7 +132,7 @@ test.describe('Cadastro de colaborador', () => {
   test('draft do formulário sobrevive à navegação', async ({ page }) => {
     const name = 'Rascunho Teste'
 
-    await page.getByRole('link', { name: /novo colaborador/i }).click()
+    await clickNovoColaborador(page)
     await page.getByLabel(/nome completo/i).fill(name)
     await page.getByRole('button', { name: /Cancelar/i }).click()
     await expect(page).toHaveURL(/\/staffs/)

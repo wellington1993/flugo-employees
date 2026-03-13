@@ -137,9 +137,9 @@ export function useStaffForm(staffId?: string) {
     try {
       let result;
       if (staffId) {
-        result = await container.updateStaffUseCase.execute(staffId, data)
+        result = await container.updateStaffUseCase.execute(staffId, data as any)
       } else {
-        result = await container.createStaffUseCase.execute(data)
+        result = await container.createStaffUseCase.execute(data as any)
       }
 
       if (!result.success) throw result.error

@@ -25,6 +25,7 @@ export function useDepartments() {
       if (isFailure(result)) throw result.error
       return result.value
     },
+    refetchOnMount: 'always',
   })
 }
 
@@ -36,8 +37,15 @@ export function useCreateDepartment() {
       if (isFailure(result)) throw result.error
       return result.value
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['departments'] })
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['departments'] }),
+        queryClient.invalidateQueries({ queryKey: ['staffs'] }),
+      ])
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ['departments'], type: 'active' }),
+        queryClient.refetchQueries({ queryKey: ['staffs'], type: 'active' }),
+      ])
     },
   })
 }
@@ -50,8 +58,15 @@ export function useDeleteDepartment() {
       if (isFailure(result)) throw result.error
       return result.value
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['departments'] })
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['departments'] }),
+        queryClient.invalidateQueries({ queryKey: ['staffs'] }),
+      ])
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ['departments'], type: 'active' }),
+        queryClient.refetchQueries({ queryKey: ['staffs'], type: 'active' }),
+      ])
     },
   })
 }

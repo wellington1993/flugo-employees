@@ -44,6 +44,12 @@ describe('basicInfoSchema (Passo 0)', () => {
     expect(result.error?.issues[0].message).toContain('e-mail válido')
   })
 
+  it('rejeita e-mail com espaços nas bordas (normalização ocorre fora do schema)', () => {
+    const result = basicInfoSchema.safeParse({ ...validBasicData, email: '  ANA@EMPRESA.COM  ' })
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0].message).toContain('e-mail válido')
+  })
+
   it('ignora campos de outras etapas', () => {
     // Deve ser válido mesmo com campos extras, pois o schema só olha para o que conhece
     const result = basicInfoSchema.safeParse({ ...validBasicData, department: 'TI' })

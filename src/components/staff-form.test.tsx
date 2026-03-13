@@ -25,7 +25,11 @@ describe('StaffForm Keyboard Navigation', () => {
     vi.clearAllMocks()
   })
 
-  const renderForm = (activeStep = 0) => {
+  const renderForm = (
+    activeStep = 0,
+    defaults?: Partial<StaffSchema>,
+    managers: any[] = []
+  ) => {
     const { result } = renderHook(() => useForm<StaffSchema>({
       defaultValues: {
         name: '',
@@ -35,7 +39,9 @@ describe('StaffForm Keyboard Navigation', () => {
         role: '',
         admissionDate: '2024-01-01',
         hierarchicalLevel: 'ENTRY',
-        baseSalary: 0
+        managerId: '',
+        baseSalary: 0,
+        ...defaults
       }
     }))
 
@@ -50,7 +56,8 @@ describe('StaffForm Keyboard Navigation', () => {
       handleBack: mockHandleBack,
       currentProgress: activeStep === 0 ? 0 : 50,
       departments: [{ id: 'd1', name: 'TI' }],
-      managers: [],
+      managers,
+      duplicateNameWarning: null,
     })
 
     return render(
@@ -91,6 +98,65 @@ describe('StaffForm Keyboard Navigation', () => {
     const form = container.querySelector('form')
     if (form) fireEvent.submit(form)
 
+    expect(mockHandleNext).toHaveBeenCalled()
+  })
+
+  it('deve exibir aviso e pedir confirmação no vínculo Gestor -> Gestor', async () => {
+    const user = userEvent.setup()
+    renderForm(
+      1,
+      { hierarchicalLevel: 'MANAGER', managerId: 'mgr-1' },
+      [{ id: 'mgr-1', name: 'Gestora Ana', hierarchicalLevel: 'MANAGER' }]
+    )
+
+    expect(screen.getByText(/vínculo Gestor → Gestor/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /finalizar cadastro/i }))
+    expect(screen.getByText(/Confirmar vínculo Gestor → Gestor/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /Confirmar e salvar/i }))
+    expect(mockHandleNext).toHaveBeenCalled()
+  })
+
+  it('deve exibir aviso de nome duplicado sem bloquear o avanço', async () => {
+    vi.mocked(useStaffFormHook.useStaffForm).mockReturnValue({
+      form: renderHook(() => useForm<StaffSchema>({
+        defaultValues: {
+          name: 'Ana Souza',
+          email: '',
+          status: 'ACTIVE',
+          departmentId: '',
+          role: '',
+          admissionDate: '2024-01-01',
+          hierarchicalLevel: 'ENTRY',
+          managerId: '',
+          baseSalary: 0,
+        }
+      })).result.current as unknown as UseFormReturn<StaffSchema, any, undefined>,
+      activeStep: 0,
+      steps: ['Info Básica', 'Info Profissional'],
+      isPending: false,
+      toast: null,
+      setToast: mockSetToast,
+      handleNext: mockHandleNext,
+      handleBack: mockHandleBack,
+      currentProgress: 0,
+      departments: [{ id: 'd1', name: 'TI' }],
+      managers: [],
+      duplicateNameWarning: 'Aviso: já existe colaborador com este nome. Você pode continuar e salvar normalmente.',
+    })
+
+    const user = userEvent.setup()
+    render(
+      <BrowserRouter>
+        <ThemeProvider theme={theme}>
+          <StaffForm />
+        </ThemeProvider>
+      </BrowserRouter>
+    )
+
+    expect(screen.getByText(/já existe colaborador com este nome/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /próximo passo/i }))
     expect(mockHandleNext).toHaveBeenCalled()
   })
 })

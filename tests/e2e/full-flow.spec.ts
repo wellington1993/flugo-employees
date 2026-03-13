@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { cleanupTestRecords } from './utils/cleanup'
+import { ensureAuthenticated } from './utils/auth'
 
 test.afterEach(async () => {
   await cleanupTestRecords()
@@ -7,7 +8,7 @@ test.afterEach(async () => {
 
 test.describe('Fluxo de Cadastro Online', () => {
   test('Fluxo completo do formulário', async ({ page }) => {
-    await page.goto('/staffs')
+    await ensureAuthenticated(page)
     await expect(page.getByRole('heading', { name: /colaboradores/i })).toBeVisible({ timeout: 20000 })
 
     await page.getByRole('link', { name: /novo colaborador/i }).click()
@@ -38,8 +39,8 @@ test.describe('Fluxo de Cadastro Online', () => {
 
 test.describe('Fluxo de Cadastro Offline', () => {
   test('salva localmente e exibe status de sincronização', async ({ context, page }) => {
-    // 1. Garante que a página carregue online primeiro para ter a aplicação disponível
-    await page.goto('/staffs')
+    // 1. Garante autenticação e carregamento online
+    await ensureAuthenticated(page)
     await expect(page.getByRole('heading', { name: /colaboradores/i })).toBeVisible({ timeout: 20000 })
 
     // 2. Navega para o formulário
