@@ -13,8 +13,53 @@ import {
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth'
 import { auth, isFirebaseConfigured } from '@/libs/firebase'
 
+import { Logo } from './logo';
+
+export function getFriendlyAuthErrorMessage(err: unknown): string {
+  const firebaseError = err as { code?: string; message?: string } | null
+  const errorCode = firebaseError?.code || ''
+
+  if (errorCode === 'auth/invalid-credential' || errorCode === 'auth/wrong-password' || errorCode === 'auth/user-not-found') {
+    return 'E-mail ou senha incorretos. Por favor, tente novamente.'
+  }
+
+  if (errorCode === 'auth/invalid-email') {
+    return 'O formato do e-mail é inválido.'
+  }
+
+  if (errorCode === 'auth/email-already-in-use') {
+    return 'Este e-mail já está em uso. Tente entrar ou use outro e-mail.'
+  }
+
+  if (errorCode === 'auth/weak-password') {
+    return 'A senha é muito fraca. Use pelo menos 6 caracteres.'
+  }
+
+  if (errorCode === 'auth/user-disabled') {
+    return 'Esta conta foi desativada. Entre em contato com o suporte.'
+  }
+
+  if (errorCode === 'auth/too-many-requests') {
+    return 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.'
+  }
+
+  if (errorCode === 'auth/network-request-failed') {
+    return 'Não foi possível conectar à internet. Verifique sua conexão e tente novamente.'
+  }
+
+  if (
+    errorCode === 'auth/configuration-not-found' ||
+    firebaseError?.message?.includes('configuration-not-found')
+  ) {
+    return 'Serviço de autenticação indisponível no momento. Tente novamente mais tarde.'
+  }
+
+  return 'Não foi possível fazer login agora. Tente novamente em alguns instantes.'
+}
+
 export function Login() {
   const navigate = useNavigate()
+  const shouldBypassAuth = import.meta.env.VITE_E2E_BYPASS_AUTH === 'true'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -25,7 +70,7 @@ export function Login() {
     e.preventDefault()
     setError(null)
 
-    if (!isFirebaseConfigured) {
+    if (!isFirebaseConfigured || shouldBypassAuth) {
       navigate('/staffs')
       return
     }
@@ -33,19 +78,16 @@ export function Login() {
     setIsLoading(true)
 
     try {
+      const normalizedEmail = email.trim().toLowerCase()
       if (isSignUp) {
-        await createUserWithEmailAndPassword(auth, email, password)
+        await createUserWithEmailAndPassword(auth, normalizedEmail, password)
       } else {
-        await signInWithEmailAndPassword(auth, email, password)
+        await signInWithEmailAndPassword(auth, normalizedEmail, password)
       }
       navigate('/staffs')
-    } catch (err: any) {
+    } catch (err) {
       console.error('[Login Error]', err)
-      if (err.code === 'auth/configuration-not-found' || err.message?.includes('configuration-not-found')) {
-        setError('Configuração do Firebase Auth não encontrada. Verifique se o método E-mail/Senha está ativo no console.')
-      } else {
-        setError(err.message || 'Erro na autenticação')
-      }
+      setError(getFriendlyAuthErrorMessage(err))
     } finally {
       setIsLoading(false)
     }
@@ -53,13 +95,15 @@ export function Login() {
 
   return (
     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', bgcolor: 'background.default' }}>
-      <Container maxWidth="sm">
-        <Paper elevation={0} variant="outlined" sx={{ p: 4, borderRadius: 3 }}>
-          <Typography variant="h4" fontWeight={700} mb={1} align="center">Flugo</Typography>
+      <Container maxWidth="xs">
+        <Paper elevation={0} variant="outlined" sx={{ p: { xs: 3, sm: 5 }, borderRadius: 3, textAlign: 'center' }}>
+          <Box sx={{ width: 140, mx: 'auto', mb: 2 }}>
+            <Logo />
+          </Box>
           <Typography variant="body2" color="text.secondary" align="center" mb={4}>Gerenciador de Colaboradores</Typography>
 
-          {!isFirebaseConfigured && (
-            <Alert severity="info" sx={{ mb: 2 }}>Modo offline - clique em Entrar para continuar.</Alert>
+          {(!isFirebaseConfigured || shouldBypassAuth) && (
+            <Alert severity="info" sx={{ mb: 2 }}>Modo teste/offline - clique em Entrar para continuar.</Alert>
           )}
 
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -78,7 +122,7 @@ export function Login() {
             </Button>
           )}
           
-          {error && (error.includes('Configuração') || error.includes('not-found')) && (
+          {error && error.includes('Serviço de autenticação') && (
             <Button fullWidth variant="outlined" color="warning" sx={{ mt: 2 }} onClick={() => navigate('/staffs')}>
               Entrar em Modo Offline (Bypass)
             </Button>

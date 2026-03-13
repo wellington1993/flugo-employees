@@ -24,7 +24,10 @@ const db = getFirestore(app);
 
 export async function cleanupTestRecords() {
   const staffsRef = collection(db, 'staffs');
+  const departmentsRef = collection(db, 'departments');
+
   const snapshot = await getDocs(staffsRef);
+  const departmentsSnapshot = await getDocs(departmentsRef);
   
   const deletions = snapshot.docs
     .filter(document => {
@@ -32,14 +35,24 @@ export async function cleanupTestRecords() {
       return name.includes('Wellington Teste E2E') || 
              name.includes('Offline Staff') || 
              name.includes('Offline User') ||
-             name.includes('Teste Ativo ') ||
-             name.includes('Teste Inativo ') ||
-             name.includes('Primeiro ');
+              name.includes('Teste Ativo ') ||
+              name.includes('Teste Inativo ') ||
+             name.includes('Primeiro ') ||
+             name.includes('Dept Wizard Staff ');
     })
     .map(document => deleteDoc(doc(db, 'staffs', document.id)));
+  
+  const departmentDeletions = departmentsSnapshot.docs
+    .filter(document => {
+      const name = document.data().name || '';
+      return name.includes('E2E Dept Wizard ');
+    })
+    .map(document => deleteDoc(doc(db, 'departments', document.id)));
 
-  if (deletions.length > 0) {
-    await Promise.all(deletions);
-    console.log(`[Playwright Cleanup] ${deletions.length} registros de teste removidos.`);
+  const totalDeletions = deletions.length + departmentDeletions.length
+
+  if (totalDeletions > 0) {
+    await Promise.all([...deletions, ...departmentDeletions]);
+    console.log(`[Playwright Cleanup] ${totalDeletions} registros de teste removidos.`);
   }
 }

@@ -5,24 +5,58 @@ import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
 import { ThemeProvider } from '@/components/theme-provider'
 import { ErrorBoundary } from '@/components/error-boundary'
+import { setupBackgroundCacheWarmup } from '@/helpers/background-cache-warmup'
+import { tryRecoverChunkError } from '@/helpers/chunk-recovery'
 import { queryClient } from '@/libs/tanstack-query'
 import { AppRouter } from '@/routes/app-router'
 import '@/index.css'
 
-// Registro do PWA - Apenas em produção para não interferir no HMR/Live Reload
+window.addEventListener('error', (event) => {
+  tryRecoverChunkError(event.error ?? event.message)
+})
+
+window.addEventListener('unhandledrejection', (event) => {
+  tryRecoverChunkError(event.reason)
+})
+
 if (import.meta.env.PROD) {
   import('virtual:pwa-register').then(({ registerSW }) => {
-    registerSW({
+    const updateServiceWorker = registerSW({
+      immediate: false,
+      onNeedRefresh() {
+        const applyUpdate = () => updateServiceWorker(true)
+
+        if (document.visibilityState === 'visible') {
+          applyUpdate()
+          return
+        }
+
+        const onVisibilityChange = () => {
+          if (document.visibilityState === 'visible') {
+            document.removeEventListener('visibilitychange', onVisibilityChange)
+            applyUpdate()
+          }
+        }
+
+        document.addEventListener('visibilitychange', onVisibilityChange)
+      },
       onOfflineReady() {
-        console.log('App pronto para uso offline')
+        console.log('Offline mode ready')
       },
     })
   }).catch(err => {
-    console.error('Falha ao registrar Service Worker:', err)
+    console.error('SW registration failed:', err)
   })
+} else if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations()
+    .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+    .catch((err) => {
+      console.warn('SW cleanup failed:', err)
+    })
 }
 
-// Verifica se o ambiente é Vercel Produção para evitar erros de Analytics no localhost ou preview
+setupBackgroundCacheWarmup()
+
 const isVercelProduction = import.meta.env.PROD && !!import.meta.env.VITE_VERCEL_ENV
 
 createRoot(document.getElementById('root')!).render(

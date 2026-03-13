@@ -1,44 +1,26 @@
-import React, { useState } from 'react';
-import { Box, Container } from '@mui/material';
+import React from 'react';
+import { Box } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import { DepartmentList } from '@/features/department/components/department-list';
-import { DepartmentForm } from '@/features/department/components/department-form';
 import { type Department } from '@/features/department/types';
 
 const DepartmentsPage: React.FC = () => {
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedDept, setSelectedDept] = useState<Department | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const navigate = useNavigate();
 
   const handleEdit = (dept: Department) => {
-    setSelectedDept(dept);
-    setIsFormOpen(true);
+    if (dept.id) {
+      navigate(`/departments/${dept.id}/edit`);
+    }
   };
 
   const handleAdd = () => {
-    setSelectedDept(null);
-    setIsFormOpen(true);
-  };
-
-  const handleSaved = () => {
-    setRefreshKey(prev => prev + 1);
+    navigate('/departments/new');
   };
 
   return (
-    <Container maxWidth="lg">
-      <Box py={4}>
-        <DepartmentList 
-          key={refreshKey}
-          onEdit={handleEdit} 
-          onAdd={handleAdd} 
-        />
-        <DepartmentForm
-          open={isFormOpen}
-          onClose={() => setIsFormOpen(false)}
-          onSaved={handleSaved}
-          department={selectedDept}
-        />
-      </Box>
-    </Container>
+    <Box py={1}>
+      <DepartmentList onEdit={handleEdit} onAdd={handleAdd} />
+    </Box>
   );
 };
 

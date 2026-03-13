@@ -3,13 +3,21 @@ import { useLocation, useNavigate } from 'react-router-dom'
 
 const routeNames: Record<string, string> = {
   staffs: 'Colaboradores',
+  departments: 'Departamentos',
   new: 'Cadastrar Colaborador',
+  edit: 'Editar',
 }
 
 export function Breadcrumb() {
   const location = useLocation()
   const navigate = useNavigate()
-  const parts = location.pathname.split('/').filter(Boolean)
+  const rawParts = location.pathname.split('/').filter(Boolean)
+  const parts = rawParts.filter((part, index) => {
+    const previous = rawParts[index - 1]
+    const next = rawParts[index + 1]
+    const isEntityIdInEditRoute = !!part && next === 'edit' && (previous === 'staffs' || previous === 'departments')
+    return !isEntityIdInEditRoute
+  })
 
   if (parts.length <= 1) return null
 
@@ -18,7 +26,17 @@ export function Breadcrumb() {
       {parts.map((part, index) => {
         const isLast = index === parts.length - 1
         const path = '/' + parts.slice(0, index + 1).join('/')
-        const label = routeNames[part] ?? part
+        const previous = parts[index - 1]
+        const label =
+          part === 'new' && previous === 'departments'
+            ? 'Cadastrar Departamento'
+            : part === 'new' && previous === 'staffs'
+              ? 'Cadastrar Colaborador'
+              : part === 'edit' && previous === 'departments'
+                ? 'Editar Departamento'
+                : part === 'edit' && previous === 'staffs'
+                  ? 'Editar Colaborador'
+                  : routeNames[part] ?? part
 
         if (isLast) {
           return (

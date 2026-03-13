@@ -3,13 +3,28 @@ import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
-import { staffSchema, stepSchemas, type StaffSchema } from '@/features/staff/validation'
-import { staffService } from '@/services/staffs'
-import { departmentService } from '@/services/departments'
-import { type Department } from '../department/types'
-import { type Staff } from './types'
+import { normalizeStaffEmail, normalizeStaffStatus, staffSchema, stepSchemas, basicInfoSchema, type StaffSchema } from '@/features/staff/validation'
+import { container } from '@/infrastructure/container'
+import { type Department } from '@/domain/entities/department'
+import { type Staff } from '@/domain/entities/staff'
+import { isFailure } from '@/core/functional/result'
 
 const STEPS = ['Informações Básicas', 'Informações Profissionais']
+const STEP_FIELDS: Array<Array<keyof StaffSchema>> = [
+  ['name', 'email', 'status'],
+  ['departmentId', 'role', 'admissionDate', 'hierarchicalLevel', 'managerId', 'baseSalary'],
+]
+
+export function getDuplicateNameWarning(name: string, staffs: Staff[]): string | null {
+  const normalizedName = name.trim().toLowerCase()
+  if (!normalizedName) return null
+  const hasDuplicateName = staffs.some(
+    (staff) => staff.name.trim().toLowerCase() === normalizedName
+  )
+  return hasDuplicateName
+    ? 'Aviso: já existe colaborador com este nome. Você pode continuar e salvar normalmente.'
+    : null
+}
 
 export function useStaffForm(staffId?: string) {
   const navigate = useNavigate()
@@ -19,6 +34,7 @@ export function useStaffForm(staffId?: string) {
   const [toast, setToast] = useState<{ message: string; severity: 'success' | 'error' } | null>(null)
   const [departments, setDepartments] = useState<Department[]>([])
   const [managers, setManagers] = useState<Staff[]>([])
+  const [allOtherStaffs, setAllOtherStaffs] = useState<Staff[]>([])
   const submittedRef = useRef(false)
 
   const draftKey = 'staff_form_draft'
@@ -26,16 +42,23 @@ export function useStaffForm(staffId?: string) {
   useEffect(() => {
     const loadDependencies = async () => {
       try {
-        const [depts, allStaff] = await Promise.all([
-          departmentService.getAll(),
-          staffService.getAll()
+        const [deptsResult, allStaffResult] = await Promise.all([
+          container.departmentRepository.getAll(),
+          container.staffRepository.getAll()
         ])
-        setDepartments(depts || [])
-        setManagers((allStaff || []).filter(s => s.id !== staffId))
+        
+        if (isFailure(deptsResult)) throw deptsResult.error
+        if (isFailure(allStaffResult)) throw allStaffResult.error
+
+        setDepartments(deptsResult.value || [])
+        const filteredStaffs = (allStaffResult.value || []).filter(s => s.id !== staffId)
+        setManagers(filteredStaffs)
+        setAllOtherStaffs(filteredStaffs)
       } catch (e) {
         console.error('Failed to load dependencies', e)
         setDepartments([])
         setManagers([])
+        setAllOtherStaffs([])
       }
     }
     loadDependencies()
@@ -49,7 +72,7 @@ export function useStaffForm(staffId?: string) {
       return {
         name: draftData.name ?? '',
         email: draftData.email ?? '',
-        status: draftData.status ?? 'ACTIVE',
+        status: normalizeStaffStatus(draftData.status ?? 'ACTIVE'),
         departmentId: draftData.departmentId ?? '',
         role: draftData.role ?? '',
         admissionDate: draftData.admissionDate ?? new Date().toISOString().split('T')[0],
@@ -81,13 +104,14 @@ export function useStaffForm(staffId?: string) {
   useEffect(() => {
     if (staffId) {
       const loadStaff = async () => {
-        const data = await staffService.getById(staffId)
-        if (data) {
+        const result = await container.staffRepository.getById(staffId)
+        if (!isFailure(result) && result.value) {
+          const data = result.value
           form.reset({
             name: data.name,
             email: data.email,
-            status: data.status,
-            departmentId: data.departmentId,
+            status: normalizeStaffStatus(data.status),
+            departmentId: data.departmentId ?? '',
             role: data.role,
             admissionDate: data.admissionDate,
             hierarchicalLevel: data.hierarchicalLevel,
@@ -101,6 +125,11 @@ export function useStaffForm(staffId?: string) {
   }, [staffId, form])
 
   const formValues = form.watch()
+  const watchedName = form.watch('name')
+  const duplicateNameWarning = useMemo(() => {
+    return getDuplicateNameWarning(watchedName, allOtherStaffs)
+  }, [watchedName, allOtherStaffs])
+
   useEffect(() => {
     if (!submittedRef.current && !staffId) {
       localStorage.setItem(draftKey, JSON.stringify(formValues))
@@ -110,11 +139,14 @@ export function useStaffForm(staffId?: string) {
   const onSubmit = async (data: StaffSchema) => {
     setIsPending(true)
     try {
+      let result;
       if (staffId) {
-        await staffService.update(staffId, data)
+        result = await container.updateStaffUseCase.execute(staffId, data as any)
       } else {
-        await staffService.create(data)
+        result = await container.createStaffUseCase.execute(data as any)
       }
+
+      if (!result.success) throw result.error
 
       await queryClient.invalidateQueries({ queryKey: ['staffs'] })
       await queryClient.refetchQueries({ queryKey: ['staffs'], type: 'active' })
@@ -125,8 +157,20 @@ export function useStaffForm(staffId?: string) {
       setToast({ message: 'Colaborador salvo com sucesso!', severity: 'success' })
       setTimeout(() => navigate('/staffs'), 1500)
     } catch (err: unknown) {
+      const message =
+        err instanceof Error && err.message === 'MANAGER_LEVEL_INVALID'
+          ? 'O gestor precisa ter nível hierárquico igual ou maior que o colaborador.'
+          : err instanceof Error && err.message === 'MANAGER_ROLE_INVALID'
+            ? 'Somente colaboradores com cargo de gestão podem ser gestores.'
+          : err instanceof Error && err.message === 'MANAGER_SELF_REFERENCE'
+            ? 'O colaborador não pode ser o próprio gestor.'
+            : err instanceof Error && err.message === 'MANAGER_NOT_FOUND'
+              ? 'O gestor selecionado não foi encontrado.'
+              : err instanceof Error
+                ? err.message
+                : 'Não foi possível salvar os dados.'
       setToast({
-        message: err instanceof Error ? err.message : 'Não foi possível salvar os dados.',
+        message,
         severity: 'error',
       })
     } finally {
@@ -136,31 +180,32 @@ export function useStaffForm(staffId?: string) {
 
   const handleNext = async () => {
     const currentStepSchema = stepSchemas[activeStep]
-    const currentStepValues = form.getValues()
+    const currentStepFields = STEP_FIELDS[activeStep]
+    if (!currentStepSchema || !currentStepFields) return false
 
-    const stepValidation = await currentStepSchema.safeParseAsync(currentStepValues)
-
-    if (!stepValidation.success) {
-      stepValidation.error.issues.forEach((issue) => {
-        form.setError(issue.path[0] as any, {
-          message: issue.message
-        })
-      })
+    const isCurrentStepValid = await form.trigger(currentStepFields, { shouldFocus: true })
+    if (!isCurrentStepValid) {
+      const firstErroredField = currentStepFields.find((field) => form.getFieldState(field).invalid)
+      const stepWithError = firstErroredField && Object.keys(basicInfoSchema.shape).includes(firstErroredField as string) ? 0 : 1
+      setActiveStep(stepWithError)
       setToast({ message: 'Verifique os campos marcados em vermelho.', severity: 'error' })
       return false
     }
 
     if (activeStep === 0) {
-      const email = form.getValues('email').trim().toLowerCase()
-      const allStaff = await staffService.getAll()
-      const isDuplicate = allStaff.some(s => s.email.trim().toLowerCase() === email && s.id !== staffId)
+      const email = normalizeStaffEmail(form.getValues('email'))
+      const allStaffResult = await container.staffRepository.getAll()
+      if (!isFailure(allStaffResult)) {
+        const allStaff = allStaffResult.value
+        const isDuplicate = allStaff.some(s => normalizeStaffEmail(s.email) === email && s.id !== staffId)
 
-      if (isDuplicate) {
-        form.setError('email', {
-          type: 'manual',
-          message: 'Este e-mail já está em uso por outro colaborador.'
-        })
-        return false
+        if (isDuplicate) {
+          form.setError('email', {
+            type: 'manual',
+            message: 'Este e-mail já está em uso por outro colaborador.'
+          })
+          return false
+        }
       }
     }
 
@@ -192,5 +237,6 @@ export function useStaffForm(staffId?: string) {
     currentProgress: ((activeStep + 1) / STEPS.length) * 100,
     departments,
     managers,
+    duplicateNameWarning,
   }
 }

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { cleanupTestRecords } from './utils/cleanup'
+import { ensureAuthenticated } from './utils/auth'
 
 test.afterEach(async () => {
   await cleanupTestRecords()
@@ -7,8 +8,7 @@ test.afterEach(async () => {
 
 test.describe('Resiliência e Sincronização Offline', () => {
   test.beforeEach(async ({ page }) => {
-    // Começa na listagem e limpa o estado local
-    await page.goto('/staffs')
+    await ensureAuthenticated(page)
     await page.evaluate(() => localStorage.clear())
   })
 

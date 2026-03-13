@@ -46,7 +46,17 @@ if (env) {
   // Mocks simplificados para não quebrar o app
   app = {} as any
   db = {} as any
-  auth = {} as any
+  auth = {
+    currentUser: null,
+    onAuthStateChanged: (cb: any) => {
+      cb(null)
+      return () => {}
+    },
+    onIdTokenChanged: (cb: any) => {
+      cb(null)
+      return () => {}
+    },
+  } as any
 }
 
 export { app, db, auth }

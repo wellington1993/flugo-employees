@@ -6,13 +6,13 @@ import { Sidebar } from '@/components/sidebar'
 import { Header } from '@/components/header'
 import { Breadcrumb } from '@/components/breadcrumb'
 import { useSyncPending } from '@/features/staff/hooks'
+import { ConnectivityIndicator } from '@/components/connectivity-indicator'
 
 function App() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   
-  // Ativa a sincronização em segundo plano
   useSyncPending()
 
   const handleDrawerToggle = () => {
@@ -21,6 +21,7 @@ function App() {
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
+      <ConnectivityIndicator />
       <Sidebar mobileOpen={mobileOpen} onClose={handleDrawerToggle} />
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%' }}>
         <Header>
@@ -36,8 +37,8 @@ function App() {
             </IconButton>
           )}
         </Header>
-        <Box component="main" sx={{ flex: 1, p: { xs: 2, md: 5 }, width: '100%' }}>
-          <Container maxWidth="md" disableGutters>
+        <Box component="main" sx={{ flex: 1, p: { xs: 1.5, sm: 2.5, md: 4 }, width: '100%' }}>
+          <Container maxWidth="xl" disableGutters>
             <Breadcrumb />
             <Outlet />
           </Container>

@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test'
+import { ensureAuthenticated } from './utils/auth'
 
 test.describe('Integridade Relacional', () => {
+  test.beforeEach(async ({ page }) => {
+    await ensureAuthenticated(page)
+  })
+
   test('Fluxo: criar departamento e vincular colaborador', async ({ page }) => {
     // 1. Criar Departamento
     await page.goto('/departments')

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import { Sidebar } from './sidebar'
 import { ThemeProvider, createTheme } from '@mui/material'
 import { BrowserRouter } from 'react-router-dom'
@@ -38,18 +38,20 @@ describe('Sidebar Component', () => {
 
   it('deve navegar para /staffs ao clicar no item', () => {
     renderWithProviders(<Sidebar />)
+
+    // Encontra o ListItemButton que contém o texto "Colaboradores"
+    const colaboradoresItem = screen.getByText('Colaboradores')
+    const button = colaboradoresItem.closest('div[role="button"]')
     
-    // O ListItemButton do MUI é renderizado como uma div com role="button"
-    const button = screen.getByRole('button')
-    fireEvent.click(button)
+    fireEvent.click(button!)
 
     expect(mockNavigate).toHaveBeenCalledWith('/staffs')
   })
 
   it('deve renderizar a logo da Flugo', () => {
     renderWithProviders(<Sidebar />)
-    const logo = screen.getByAltText('Flugo')
-    expect(logo).toBeDefined()
-    expect(logo.getAttribute('src')).toContain('flugo_hor.png')
+    const logo = screen.getAllByAltText('Flugo Logo')[0]
+    expect(logo).toBeInTheDocument()
+    expect(logo).toHaveAttribute('src', expect.stringContaining('flugo_hor.png'))
   })
 })
