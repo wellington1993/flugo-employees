@@ -1,1 +1,0 @@
-if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/flugo-employees/sw.js', { scope: '/flugo-employees/' })})}
