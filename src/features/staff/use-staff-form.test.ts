@@ -54,18 +54,21 @@ beforeEach(() => {
 
 describe('useStaffForm', () => {
   describe('estado inicial', () => {
-    it('começa no passo 0', () => {
+    it('começa no passo 0', async () => {
       const { result } = renderHook(() => useStaffForm(), { wrapper: createWrapper() })
+      await waitFor(() => expect(result.current.departments.length).toBe(0))
       expect(result.current.activeStep).toBe(0)
     })
 
-    it('retorna 2 steps', () => {
+    it('retorna 2 steps', async () => {
       const { result } = renderHook(() => useStaffForm(), { wrapper: createWrapper() })
+      await waitFor(() => expect(result.current.departments.length).toBe(0))
       expect(result.current.steps).toHaveLength(2)
     })
 
-    it('toast começa nulo', () => {
+    it('toast começa nulo', async () => {
       const { result } = renderHook(() => useStaffForm(), { wrapper: createWrapper() })
+      await waitFor(() => expect(result.current.departments.length).toBe(0))
       expect(result.current.toast).toBeNull()
     })
   })

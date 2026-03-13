@@ -50,8 +50,8 @@ describe('Sidebar Component', () => {
 
   it('deve renderizar a logo da Flugo', () => {
     renderWithProviders(<Sidebar />)
-    const logo = screen.getByAltText('Flugo')
-    expect(logo).toBeDefined()
-    expect(logo.getAttribute('src')).toContain('flugo_hor.png')
+    const logo = screen.getAllByAltText('Flugo Logo')[0]
+    expect(logo).toBeInTheDocument()
+    expect(logo).toHaveAttribute('src', expect.stringContaining('flugo_hor.png'))
   })
 })
