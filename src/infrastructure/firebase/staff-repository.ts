@@ -19,6 +19,7 @@ import { IStaffRepository } from '@/domain/repositories/i-staff-repository';
 import { Result, success, failure } from '@/core/functional/result';
 import { StaffMapper } from '../mappers/staff-mapper';
 import { OfflineQueue } from '../persistence/offline-queue';
+import { generateUUID } from '@/helpers/uuid';
 
 const STAFFS_COLLECTION = 'staffs';
 const DEPTS_COLLECTION = 'departments';
@@ -32,7 +33,7 @@ export class FirebaseStaffRepository implements IStaffRepository {
 
   private isNetworkError(e: any): boolean {
     return !navigator.onLine || 
-           (e && (e.code === 'unavailable' || e.code === 'network-request-failed' || String(e).includes('network')));
+           (e && (e.code === 'unavailable' || e.code === 'network-request-failed' || e.code === 'deadline-exceeded' || String(e).includes('network') || String(e).includes('transport')));
   }
 
   async getAll(): Promise<Result<Staff[]>> {
@@ -61,7 +62,7 @@ export class FirebaseStaffRepository implements IStaffRepository {
 
   async create(staff: Omit<Staff, 'id'>): Promise<Result<string>> {
     const timestamp = Date.now();
-    const staffId = crypto.randomUUID(); // Geramos ID localmente para manter consistência offline
+    const staffId = generateUUID(); // Geramos ID localmente para manter consistência offline
 
     try {
       const batch = writeBatch(this.db);

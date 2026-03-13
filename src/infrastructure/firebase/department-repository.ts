@@ -6,8 +6,8 @@ import {
   query, 
   orderBy, 
   writeBatch,
-  arrayRemove,
   arrayUnion,
+  arrayRemove,
   type DocumentData,
   type QuerySnapshot,
   Firestore
@@ -18,10 +18,9 @@ import { IDepartmentRepository } from '@/domain/repositories/i-department-reposi
 import { Result, success, failure } from '@/core/functional/result';
 import { DepartmentMapper } from '../mappers/department-mapper';
 import { OfflineQueue } from '../persistence/offline-queue';
+import { generateUUID } from '@/helpers/uuid';
 
 const DEPTS_COLLECTION = 'departments';
-const STAFFS_COLLECTION = 'staffs';
-const uniqueIds = (ids: readonly string[] = []) => Array.from(new Set(ids.filter(Boolean)));
 
 export class FirebaseDepartmentRepository implements IDepartmentRepository {
   private readonly db: Firestore;
@@ -61,40 +60,17 @@ export class FirebaseDepartmentRepository implements IDepartmentRepository {
 
   async create(dept: Omit<Department, 'id'>): Promise<Result<string>> {
     const timestamp = Date.now();
-    const deptId = crypto.randomUUID();
+    const deptId = generateUUID();
 
     try {
       const docRef = doc(this.db, DEPTS_COLLECTION, deptId);
-      const requestedStaffIds = uniqueIds(dept.staffIds ?? []);
       const firestoreData = DepartmentMapper.toFirestore({
         ...dept,
-        staffIds: requestedStaffIds,
         createdAt: timestamp,
       });
 
       const batch = writeBatch(this.db);
       batch.set(docRef, firestoreData);
-
-      const previousDepartmentsToUpdate = new Set<string>();
-      for (const staffId of requestedStaffIds) {
-        const staffRef = doc(this.db, STAFFS_COLLECTION, staffId);
-        const staffSnapshot = await getDoc(staffRef);
-        if (!staffSnapshot.exists()) continue;
-
-        const staffData = staffSnapshot.data() as { departmentId?: string | null };
-        if (staffData.departmentId && staffData.departmentId !== deptId) {
-          previousDepartmentsToUpdate.add(staffData.departmentId);
-        }
-
-        batch.update(staffRef, { departmentId: deptId });
-      }
-
-      for (const sourceDepartmentId of previousDepartmentsToUpdate) {
-        batch.update(doc(this.db, DEPTS_COLLECTION, sourceDepartmentId), {
-          staffIds: arrayRemove(...requestedStaffIds),
-        });
-      }
-
       await batch.commit();
       
       return success(deptId);
@@ -111,70 +87,101 @@ export class FirebaseDepartmentRepository implements IDepartmentRepository {
     }
   }
 
-  async update(
-    id: string,
-    dept: Partial<Department>,
-    options?: { transferRemovedToDepartmentId?: string }
-  ): Promise<Result<void>> {
+  async update(id: string, dept: Partial<Department>, options?: { transferRemovedToDepartmentId?: string }): Promise<Result<void>> {
     try {
-      const currentDepartmentRef = doc(this.db, DEPTS_COLLECTION, id);
-      const currentDepartmentSnap = await getDoc(currentDepartmentRef);
-      if (!currentDepartmentSnap.exists()) {
-        return failure(new Error('DEPARTMENT_NOT_FOUND'));
+      const currentDeptRef = doc(this.db, DEPTS_COLLECTION, id);
+      const currentDeptSnapshot = await getDoc(currentDeptRef);
+      if (!currentDeptSnapshot.exists()) {
+        throw new Error('DEPARTMENT_NOT_FOUND');
       }
 
-      const currentDepartment = DepartmentMapper.toDomain(currentDepartmentSnap as any);
-      const currentStaffIds = uniqueIds(currentDepartment.staffIds ?? []);
-      const requestedStaffIds = uniqueIds(dept.staffIds ?? currentStaffIds);
-      const addedStaffIds = requestedStaffIds.filter((staffId) => !currentStaffIds.includes(staffId));
-      const removedStaffIds = currentStaffIds.filter((staffId) => !requestedStaffIds.includes(staffId));
-      if (removedStaffIds.length > 0 && !options?.transferRemovedToDepartmentId) {
-        return failure(new Error('DEPARTMENT_STAFF_REMOVAL_REQUIRES_TRANSFER'));
-      }
-      if (options?.transferRemovedToDepartmentId && options.transferRemovedToDepartmentId === id) {
-        return failure(new Error('DEPARTMENT_TRANSFER_TARGET_INVALID'));
+      const currentDeptData = currentDeptSnapshot.data() as Department;
+      const currentStaffIds = new Set((currentDeptData.staffIds ?? []) as string[]);
+      const nextStaffIds = new Set((dept.staffIds ?? currentDeptData.staffIds ?? []) as string[]);
+      const removedStaffIds = [...currentStaffIds].filter((staffId) => !nextStaffIds.has(staffId));
+      const addedStaffIds = [...nextStaffIds].filter((staffId) => !currentStaffIds.has(staffId));
+      const transferRemovedToDepartmentId = options?.transferRemovedToDepartmentId?.trim();
+
+      if (removedStaffIds.length > 0 && !transferRemovedToDepartmentId) {
+        throw new Error('DEPARTMENT_STAFF_REMOVAL_REQUIRES_TRANSFER');
       }
 
-      const docRef = doc(this.db, DEPTS_COLLECTION, id);
-      const batch = writeBatch(this.db);
-      const sourceDepartments = new Set<string>();
+      if (transferRemovedToDepartmentId && transferRemovedToDepartmentId === id) {
+        throw new Error('DEPARTMENT_TRANSFER_TARGET_INVALID');
+      }
+
+      let transferDepartmentExists = false;
+      if (transferRemovedToDepartmentId) {
+        const transferDeptSnapshot = await getDoc(doc(this.db, DEPTS_COLLECTION, transferRemovedToDepartmentId));
+        transferDepartmentExists = transferDeptSnapshot.exists();
+      }
+
+      if (removedStaffIds.length > 0 && !transferDepartmentExists) {
+        throw new Error('DEPARTMENT_TRANSFER_TARGET_INVALID');
+      }
+
+      let batch = writeBatch(this.db);
+      let opCount = 0;
+      const MAX_OPS = 500;
+      const commitBatchIfNeeded = async () => {
+        if (opCount >= MAX_OPS) {
+          await batch.commit();
+          batch = writeBatch(this.db);
+          opCount = 0;
+        }
+      };
+      const addOp = async (cb: () => void) => {
+        await commitBatchIfNeeded();
+        cb();
+        opCount += 1;
+      };
+
+      await addOp(() => {
+        batch.update(currentDeptRef, DepartmentMapper.toFirestore({
+          ...dept,
+          staffIds: Array.from(nextStaffIds),
+        }));
+      });
 
       for (const staffId of addedStaffIds) {
-        const staffRef = doc(this.db, STAFFS_COLLECTION, staffId);
+        const staffRef = doc(this.db, 'staffs', staffId);
         const staffSnapshot = await getDoc(staffRef);
         if (!staffSnapshot.exists()) continue;
 
-        const staffData = staffSnapshot.data() as { departmentId?: string | null };
-        if (staffData.departmentId && staffData.departmentId !== id) {
-          sourceDepartments.add(staffData.departmentId);
+        const previousDepartmentId = (staffSnapshot.data() as { departmentId?: string }).departmentId;
+        if (previousDepartmentId && previousDepartmentId !== id) {
+          const previousDeptRef = doc(this.db, DEPTS_COLLECTION, previousDepartmentId);
+          const previousDeptSnapshot = await getDoc(previousDeptRef);
+          if (previousDeptSnapshot.exists()) {
+            await addOp(() => {
+              batch.update(previousDeptRef, { staffIds: arrayRemove(staffId) });
+            });
+          }
         }
 
-        batch.update(staffRef, { departmentId: id });
-      }
-
-      for (const sourceDepartmentId of sourceDepartments) {
-        batch.update(doc(this.db, DEPTS_COLLECTION, sourceDepartmentId), {
-          staffIds: arrayRemove(...addedStaffIds),
+        await addOp(() => {
+          batch.update(staffRef, { departmentId: id });
         });
       }
 
-      if (removedStaffIds.length > 0 && options?.transferRemovedToDepartmentId) {
-        const targetDepartmentRef = doc(this.db, DEPTS_COLLECTION, options.transferRemovedToDepartmentId);
-        batch.update(targetDepartmentRef, {
-          staffIds: arrayUnion(...removedStaffIds),
-        });
-
+      if (removedStaffIds.length > 0 && transferRemovedToDepartmentId) {
         for (const staffId of removedStaffIds) {
-          const staffRef = doc(this.db, STAFFS_COLLECTION, staffId);
-          batch.update(staffRef, { departmentId: options.transferRemovedToDepartmentId });
+          const staffRef = doc(this.db, 'staffs', staffId);
+          await addOp(() => {
+            batch.update(staffRef, { departmentId: transferRemovedToDepartmentId });
+          });
         }
+
+        await addOp(() => {
+          batch.update(doc(this.db, DEPTS_COLLECTION, transferRemovedToDepartmentId), {
+            staffIds: arrayUnion(...removedStaffIds),
+          });
+        });
       }
 
-      batch.update(docRef, DepartmentMapper.toFirestore({
-        ...dept,
-        staffIds: requestedStaffIds,
-      }));
-      await batch.commit();
+      if (opCount > 0) {
+        await batch.commit();
+      }
       return success(undefined);
     } catch (e) {
       if (this.isNetworkError(e)) {
@@ -193,6 +200,16 @@ export class FirebaseDepartmentRepository implements IDepartmentRepository {
   async delete(id: string): Promise<Result<void>> {
     try {
       const docRef = doc(this.db, DEPTS_COLLECTION, id);
+      const deptSnap = await getDoc(docRef);
+      if (!deptSnap.exists()) {
+        throw new Error('DEPARTMENT_NOT_FOUND');
+      }
+
+      const department = deptSnap.data() as Department;
+      if ((department.staffIds ?? []).length > 0) {
+        throw new Error('DEPARTMENT_HAS_STAFF');
+      }
+
       const batch = writeBatch(this.db);
       batch.delete(docRef);
       await batch.commit();
