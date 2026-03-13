@@ -49,21 +49,12 @@ Abra [http://localhost:5173](http://localhost:5173) no navegador.
 Para gerar a versão final otimizada:
 
 ```bash
-npm run build
+`npm run build
 npm run preview
 ```
 
-## Docker (Jeito fácil)
-
-Se você curte Docker, é só subir o container:
-
-```bash
-docker compose up --build
-```
-
-O app vai estar disponível em `http://localhost:3000`.
-
 ## Configurando o Firebase
+
 
 Para que tudo funcione, você precisa ativar dois serviços no seu console do Firebase:
 
