@@ -146,6 +146,7 @@ export function useStaffForm(staffId?: string) {
           message: issue.message
         })
       })
+      setToast({ message: 'Verifique os campos marcados em vermelho.', severity: 'error' })
       return false
     }
 

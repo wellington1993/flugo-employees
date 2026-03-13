@@ -9,7 +9,10 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-able-icon.png'],
+      devOptions: {
+        enabled: false // Desativado em dev para não quebrar o Live Reload com cache agressivo
+      },
+      includeAssets: ['vite.svg', 'apple-touch-icon.png', 'maskable-icon.png'],
       manifest: {
         name: 'Flugo Staff Manager',
         short_name: 'Flugo Staff',

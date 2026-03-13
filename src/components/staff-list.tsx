@@ -40,6 +40,7 @@ const columns = [
   { id: 'status', label: 'Status', align: 'center' },
 ]
 
+
 export function StaffList() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))

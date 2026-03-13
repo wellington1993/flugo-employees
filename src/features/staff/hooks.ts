@@ -38,6 +38,8 @@ export function useDeleteDepartment() {
   })
 }
 
+type CreateStaffReturn = Awaited<ReturnType<typeof createStaff>>
+
 export function useCreateStaff() {
   const queryClient = useQueryClient()
   return useMutation({

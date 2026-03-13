@@ -5,11 +5,15 @@ import MenuIcon from '@mui/icons-material/Menu'
 import { Sidebar } from '@/components/sidebar'
 import { Header } from '@/components/header'
 import { Breadcrumb } from '@/components/breadcrumb'
+import { useSyncPending } from '@/features/staff/hooks'
 
 function App() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  
+  // Ativa a sincronização em segundo plano
+  useSyncPending()
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen)

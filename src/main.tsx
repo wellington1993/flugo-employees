@@ -9,8 +9,21 @@ import { queryClient } from '@/libs/tanstack-query'
 import { AppRouter } from '@/routes/app-router'
 import '@/index.css'
 
-// Verifica se o ambiente é produção para evitar erros de Analytics no localhost
-const isProduction = import.meta.env.PROD
+// Registro do PWA - Apenas em produção para não interferir no HMR/Live Reload
+if (import.meta.env.PROD) {
+  import('virtual:pwa-register').then(({ registerSW }) => {
+    registerSW({
+      onOfflineReady() {
+        console.log('App pronto para uso offline')
+      },
+    })
+  }).catch(err => {
+    console.error('Falha ao registrar Service Worker:', err)
+  })
+}
+
+// Verifica se o ambiente é Vercel Produção para evitar erros de Analytics no localhost ou preview
+const isVercelProduction = import.meta.env.PROD && !!import.meta.env.VITE_VERCEL_ENV
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -18,7 +31,7 @@ createRoot(document.getElementById('root')!).render(
       <ThemeProvider>
         <ErrorBoundary>
           <AppRouter />
-          {isProduction && (
+          {isVercelProduction && (
             <>
               <Analytics />
               <SpeedInsights />

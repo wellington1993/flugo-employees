@@ -83,6 +83,7 @@ export function StaffForm({ staffId }: StaffFormProps) {
     <Box sx={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', gap: 4, p: isMobile ? 1 : 2 }}>
       <Box>
         <Stack direction="row" alignItems="center" gap={2} mb={1}>
+
           <LinearProgress
             variant="determinate"
             value={currentProgress}
