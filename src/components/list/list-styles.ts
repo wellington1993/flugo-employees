@@ -1,0 +1,15 @@
+export const listPageStyles = {
+  pageBox: { p: { xs: 1, sm: 2 } },
+  headerStackSx: { mb: 4, gap: 2 },
+  title: { variant: 'h4' as const, fontWeight: 800 },
+  subtitle: { variant: 'body2' as const, color: 'text.secondary' as const },
+  filterPaper: { p: 2, mb: 3, borderRadius: 3 },
+  tableContainer: { borderRadius: 3 },
+  tableSx: { minWidth: 650 },
+  tableHeadRow: { bgcolor: 'grey.50' },
+  tableHeadCell: { fontWeight: 700, fontSize: 12, textTransform: 'uppercase' },
+  avatar: { width: 32, height: 32, fontSize: 12, bgcolor: 'primary.main', color: 'primary.contrastText' },
+  primaryActionButton: { variant: 'contained' as const, size: 'medium' as const },
+  secondaryActionButton: { variant: 'outlined' as const, size: 'small' as const },
+  dangerActionButton: { variant: 'outlined' as const, size: 'small' as const, color: 'error' as const },
+}
